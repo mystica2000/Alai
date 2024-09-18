@@ -25,11 +25,38 @@
 
     <div class="streaming hide">
         Start Streaming!
+
+
+        <div>
+            <video id="video1" width="160" height="120" autoplay muted></video><br />
+        </div>
+
+        <div>
+            <button id="start">start</button>
+            <button id="pause">pause</button>
+            <button id="stop">stop</button>
+        </div>
+
     </div>
 
     <div class="recording hide">
         Start Recording!
+
+
+        <div>
+            <video id="video1" width="160" height="120" autoplay muted></video><br />
+        </div>
+
+        <div>
+            <input type="text" id="local" />
+            <input type="text" id="remote" />
+
+            <button id="remote-sdp">remote</button>
+        </div>
+
     </div>
+
+
 
     <script src="./index.js"></script>
 </body>

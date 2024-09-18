@@ -1,21 +1,35 @@
 function initEvents() {
-    console.log("events!");
+    const recordAudioBtn = document.getElementById("record");
+    const streamAudioBtn = document.getElementById("stream");
 
-    document.getElementById("stream").addEventListener("click", () => {
-        toggleViews('streaming', 'recording')
+    recordAudioBtn.addEventListener("click", () => {
+        console.log("record audio clicked")
     })
 
-    document.getElementById("record").addEventListener("click", () => {
-        toggleViews('recording', 'streaming')
+    streamAudioBtn.addEventListener("click", () => {
+        console.log("stream audio clicked")
     })
 }
 
-function toggleViews(showClass, hideClass) {
-    document.querySelector(`.${showClass}`).classList.replace('hide', 'show');
-    document.querySelector(`.${hideClass}`).classList.replace('show', 'hide');
+async function isServerUp() {
+    try {
+        const response = await fetch("http://localhost:8080");
+        if (!response.ok) {
+            throw new Error('Request failed', response.status)
+        }
+        return true;
+    } catch (e) {
+        console.error("Error: ", e);
+    }
 }
 
+async function initializeWebSocketServer() {
+    if (await isServerUp()) {
+
+    }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     initEvents();
+    initializeWebSocketServer();
 })
