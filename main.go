@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
+	"github.com/pion/webrtc/v4/pkg/media"
+	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 )
 
 var upgrader = websocket.Upgrader{
@@ -49,14 +53,66 @@ func initializeWebRTCPeer() error {
 			return err
 		}
 
+		oggFile, err := oggwriter.New("output.ogg", 48000, 2)
+		if err != nil {
+			panic(err)
+		}
+
 		pc.OnTrack(func(tr *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
 			codec := tr.Codec()
 			fmt.Print(codec);
+
+			if strings.EqualFold(codec.MimeType, webrtc.MimeTypeOpus) {
+				fmt.Println("Got opus track, saving to disk as output.opus ");
+				saveToDisk(oggFile,tr)
+			}
 		});
+
+		pc.OnICEConnectionStateChange(func(cs webrtc.ICEConnectionState) {
+			fmt.Printf("Connection State has changed %s \n", cs);
+
+			if cs == webrtc.ICEConnectionStateDisconnected || cs == webrtc.ICEConnectionStateFailed {
+
+				if closeError := oggFile.Close(); closeError != nil {
+					panic(closeError)
+				}
+
+				fmt.Println("Done writing media files")
+
+				// Gracefully shutdown the peer connection
+				if closeErr := pc.Close(); closeErr != nil {
+					panic(closeErr)
+				}
+
+				os.Exit(0)
+
+			}
+		})
 
 	}
 
 	return nil
+}
+
+func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
+	defer func ()  {
+		if err := i.Close(); err != nil {
+			panic(err)
+		}
+	}()
+
+	for {
+		rtpPacket, _ , err := track.ReadRTP()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		if err := i.WriteRTP(rtpPacket); err != nil {
+			fmt.Print(err)
+			return
+		}
+	}
 }
 
 
@@ -98,8 +154,6 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 
 	for {
 
-
-
 		mt, message, err := c.ReadMessage();
 
 		if err != nil {
@@ -134,9 +188,7 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 		<-gatherComplete
 
 		encodedSDP := encodeSDPtoBase64(pc.LocalDescription());
-		c.WriteMessage(mt, []byte(encodedSDP))
-
-		//handleByMessageType(webrtcMessage);
+		c.WriteMessage(mt, []byte(encodedSDP)) // return answer
 	}
 }
 
