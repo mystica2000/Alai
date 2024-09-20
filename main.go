@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -23,6 +24,24 @@ var upgrader = websocket.Upgrader{
 }
 
 var pc *webrtc.PeerConnection
+
+func createTempFileName() string {
+
+	file, err := os.Open("recordings");
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	entries, err := file.Readdirnames(0);
+	if err != nil {
+		panic(err)
+	}
+
+	fname := "recordings/output_" + strconv.Itoa(len(entries) + 1) + ".ogg";
+
+	return fname;
+}
 
 func initializeWebRTCPeer() error {
 	if pc == nil {
@@ -53,7 +72,7 @@ func initializeWebRTCPeer() error {
 			return err
 		}
 
-		oggFile, err := oggwriter.New("output.ogg", 48000, 2)
+		oggFile, err := oggwriter.New(createTempFileName(), 48000, 2)
 		if err != nil {
 			panic(err)
 		}
@@ -86,6 +105,7 @@ func initializeWebRTCPeer() error {
 
 				os.Exit(0)
 
+				initializeWebRTCPeer();
 			}
 		})
 
@@ -224,7 +244,7 @@ func main()  {
 
 	fmt.Println("Server is running at http://localhost:8080/");
 	httpServerErr := http.ListenAndServe("0.0.0.0:8080",nil)
-	if err != nil {
+	if httpServerErr != nil {
 		panic(httpServerErr)
 	}
 

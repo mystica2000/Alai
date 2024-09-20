@@ -19,6 +19,9 @@ function initEvents() {
 
         const permissionbtn = document.getElementById("permission");
         permissionbtn.addEventListener("click", async () => {
+            const controls = document.getElementById("controls");
+            controls.classList.remove("hide");
+
             await this.askPermissionForAudio();
         })
 
@@ -36,18 +39,22 @@ function initEvents() {
 }
 
 async function askPermissionForAudio() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    console.log("AUDIO GOT IT!!", stream);
+    const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            "sampleSize": 16,
+            "channelCount": 2,
+            "echoCancellation": true,
+            "noiseSupression": true,
+        }
+    });
 
     const pc = new RTCPeerConnection();
 
     pc.onicecandidate = async (event) => {
         if (event.candidate == null) {
             await pc.setLocalDescription(event.candidate);
-            console.log(pc.localDescription);
             ws.send(btoa(JSON.stringify(pc.localDescription)));
         }
-        console.log("ICE CANDIDATE!!", event);
     }
 
     stream.getAudioTracks().forEach((track) => {
@@ -60,7 +67,20 @@ async function askPermissionForAudio() {
             const sdp = JSON.parse(atob(message));
 
             if (sdp.type == 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+
+                let count = 5;
+                const interval = setInterval(() => {
+                    document.getElementById("info").innerHTML = "starts in " + count;
+                    count--;
+                }, 1000);
+
+                setTimeout(async () => {
+                    clearInterval(interval);
+                    document.getElementById("info").innerHTML = "recording..";
+                    await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+                }, 5000);
+
+
 
                 const element = document.getElementById("video1");
                 element.muted = false;
@@ -70,6 +90,12 @@ async function askPermissionForAudio() {
             console.error(e);
         }
     }
+
+    const stopBtn = document.getElementById("stop");
+    stopBtn.addEventListener("click", () => {
+        console.log("stoping ocnnection!");
+        pc.close();
+    })
 
     try {
         const offer = await pc.createOffer();
