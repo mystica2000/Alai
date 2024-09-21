@@ -1,61 +1,56 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-
-    <style>
-        .hide {
-            display: none;
-        }
-
-        .show {
-            display: block;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./src/style.css" />
+  <title>Vite + TS</title>
 </head>
 
 <body>
-    <h1>WebRTC Audio Streaming!</h1>
+  <div id="app"></div>
+  <h1>WebRTC Audio Streaming!</h1>
 
-    <button id="record"> record audio </button>
-    <button id="stream"> stream existing audio</button>
+  <button id="record"> record audio </button>
+  <button id="stream"> stream existing audio</button>
 
 
-    <div class="recording hide">
-        Start Recording!
+  <div class="recording hide">
+    Start Recording!
 
-        <button id="permission">click to get started</button>
+    <button id="permission">click to get started</button>
 
-        <div>
-            <video id="video1" width="160" height="120" autoplay muted></video><br />
-        </div>
-
-        <div id="info"></div>
-
-        <div id="controls" class="hide">
-            <button id="pause">pause</button>
-            <button id="stop">stop</button>
-        </div>
-
+    <div>
+      <video id="video1" width="160" height="120" autoplay muted></video><br />
     </div>
 
-    <div class="streaming hide">
-        Start Streaming!
 
-        <button>click to get started</button>
-
-        <br />
-        <div>
-            <video id="video1" width="160" height="120" autoplay muted></video><br />
-        </div>
-
-
+    <div id="controls" class="hide">
+      <button id="pause">pause</button>
+      <button id="stop">stop</button>
     </div>
 
-    <script src="./index.js"></script>
+  </div>
+
+  <div class="streaming hide">
+    Start Streaming!
+
+    <button>click to get started</button>
+
+    <br />
+    <div>
+      <video id="video1" width="160" height="120" autoplay muted></video><br />
+    </div>
+
+
+  </div>
+
+  <div id="info"></div>
+
+
+  <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>

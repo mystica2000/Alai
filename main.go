@@ -23,7 +23,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var pc *webrtc.PeerConnection
 
 func createTempFileName() string {
 
@@ -43,33 +42,31 @@ func createTempFileName() string {
 	return fname;
 }
 
-func initializeWebRTCPeer() error {
-	if pc == nil {
+func initializeWebRTCPeer() (*webrtc.PeerConnection, error) {
 		fmt.Println("Initializing Peer Connection");
 
 		mediaEngine := &webrtc.MediaEngine{}
 
 		if err := mediaEngine.RegisterDefaultCodecs(); err != nil {
-			return err
+			return nil,err
 		}
 
 		i := &interceptor.Registry{}
 
 		if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
-			return err
+			return nil,err
 		}
 
 		api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithInterceptorRegistry(i))
 
-		var err error;
-		pc, err = api.NewPeerConnection(webrtc.Configuration{})
+		pc, err := api.NewPeerConnection(webrtc.Configuration{})
 
 		if err != nil {
-			return err
+			return nil,err
 		}
 
 		if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
-			return err
+			return nil,err
 		}
 
 		oggFile, err := oggwriter.New(createTempFileName(), 48000, 2)
@@ -103,15 +100,11 @@ func initializeWebRTCPeer() error {
 					panic(closeErr)
 				}
 
-				os.Exit(0)
-
-				initializeWebRTCPeer();
+				os.Exit(0);
 			}
 		})
 
-	}
-
-	return nil
+		return pc,nil
 }
 
 func saveToDisk(i media.Writer, track *webrtc.TrackRemote) {
@@ -163,6 +156,8 @@ func encodeSDPtoBase64(obj *webrtc.SessionDescription) string {
 }
 
 func serverWs(w http.ResponseWriter, r *http.Request) {
+
+	fmt.Println("Hello world!!");
 	c, err := upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
@@ -171,6 +166,18 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer c.Close()
+
+	var pc *webrtc.PeerConnection
+		pc, rtcError := initializeWebRTCPeer()
+		if rtcError != nil {
+        	log.Fatal("Failed to initialize WebRTC peer:", err)
+    	}
+
+		defer func ()  {
+			if closeError := pc.Close(); closeError!=nil {
+				fmt.Printf("cannot close peerconnection %v\n", closeError);
+			}
+		}()
 
 	for {
 
@@ -183,8 +190,6 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 
 		offer := webrtc.SessionDescription{}
 		decodeBase64ToSDP(string(message), &offer);
-
-		initializeWebRTCPeer();
 
 		err = pc.SetRemoteDescription(offer)
 		if err != nil {
@@ -224,17 +229,6 @@ func CORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main()  {
-
-	err := initializeWebRTCPeer()
-	if err != nil {
-        log.Fatal("Failed to initialize WebRTC peer:", err)
-    }
-
-	defer func ()  {
-		if closeError := pc.Close(); closeError!=nil {
-			fmt.Printf("cannot close peerconnection %v\n", closeError);
-		}
-	}()
 
 	http.HandleFunc("/server_test", CORS(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Server is running"));
