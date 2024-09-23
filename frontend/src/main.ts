@@ -8,7 +8,6 @@ function initEvents() {
 
 
   recordAudioBtn?.addEventListener("click", () => {
-    console.log("record audio clicked");
 
     if (!streaming?.classList.contains("hide")) {
       streaming?.classList.toggle("hide");
@@ -30,7 +29,6 @@ function initEvents() {
   })
 
   streamAudioBtn?.addEventListener("click", () => {
-    console.log("stream audio clicked")
 
     if (!recording?.classList.contains("hide")) {
       recording?.classList.toggle("hide");
@@ -41,8 +39,7 @@ function initEvents() {
 }
 
 async function askPermissionForAudio() {
-
-
+  let isPaused = false;
   const infoDiv = document.getElementById("info");
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: {
@@ -56,7 +53,7 @@ async function askPermissionForAudio() {
 
   pc.onicecandidate = async (event) => {
     if (event.candidate == null) {
-      ws.send(btoa(JSON.stringify(pc.localDescription)));
+      ws.send(JSON.stringify({ type: "offer", msg: btoa(JSON.stringify(pc.localDescription)) }));
     }
   }
 
@@ -111,6 +108,19 @@ async function askPermissionForAudio() {
     if (infoDiv) {
       infoDiv.innerHTML = "over!";
       ws.close();
+    }
+  })
+
+  const pauseBtn = document.getElementById("pause");
+  pauseBtn?.addEventListener("click", () => {
+    const audioTrack = stream.getAudioTracks()[0];
+    isPaused = !isPaused;
+    audioTrack.enabled = !isPaused;
+
+    ws.send(JSON.stringify({ type: "pause", pause: isPaused }));
+
+    if (infoDiv) {
+      infoDiv.innerHTML = isPaused ? "paused!" : "resumed";
     }
   })
 
