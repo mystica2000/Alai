@@ -137,14 +137,11 @@ func saveToDisk(state *AudioState, track *webrtc.TrackRemote) {
 		}
 
 		if !state.isPaused.Load() {
-			fmt.Println("notttt paused?!!!!!!!!!")
 			if err := state.writer.WriteRTP(rtpPacket); err != nil {
 				fmt.Print(err)
 				return
 			}
 		}
-
-		fmt.Println("paused?!!!!!!!!!")
 
 	}
 }
