@@ -1,0 +1,13 @@
+#root {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  height: calc(100vh - 2em);
+  padding: 2em;
+}
+
+#root {
+  height: 100%;
+}
