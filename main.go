@@ -229,30 +229,57 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CORS(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Access-Control-Allow-Origin", "*")
-		w.Header().Add("Access-Control-Allow-Credentials", "true")
-		w.Header().Add("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		w.Header().Add("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+func CORSMiddleware(allowedMethods []string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Methods", strings.Join(allowedMethods, ","))
 
-		next(w, r)
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next(w, r)
+		}
 	}
 }
 
 func main() {
 
-	http.HandleFunc("/server_test", CORS(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/server_test", CORSMiddleware([]string{"GET"})(func(w http.ResponseWriter, r *http.Request) {
+
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
 		w.Write([]byte("Server is running"))
 	}))
 
 	http.HandleFunc("/ws", serveWS)
 
-	http.HandleFunc("/recordings", CORS(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/recordings/", CORSMiddleware([]string{"GET", "POST"})(func(w http.ResponseWriter, r *http.Request) {
 
-	}))
+		if r.Method != http.MethodGet && r.Method != http.MethodDelete {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 
-	http.HandleFunc("/recordings/:id", CORS(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			id := strings.TrimPrefix(r.URL.Path, "/recordings/")
+			if id == "" {
+				http.Error(w, "Invalid ID", http.StatusBadRequest)
+				return
+			}
+			// Perform delete operation with the ID
+			w.Write([]byte("Recording deleted with ID: " + id))
+			return
+		} else {
+			w.Write([]byte("Server is running"))
+		}
 
 	}))
 
