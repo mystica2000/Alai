@@ -30,8 +30,6 @@ function App() {
           </div>
         </TabsContent>
         <TabsContent value='stream'>
-
-
           <div className='w-100'>
             <div className='flex max-w-[720px] h-[calc(100vh-2em-36px-8px-4em)] mx-auto'>
               <main className="m-2 w-full h-full">

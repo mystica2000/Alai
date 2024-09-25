@@ -1,18 +1,19 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import ServerLogs from "./ServerLogs";
 
 export default function Stream() {
-    return <Card className="h-full">
-        <CardHeader>
+    return <Card className="h-full flex flex-col">
+        <CardHeader className="flex-none">
             <CardTitle>View Recordings</CardTitle>
             <CardDescription>
                 contains Recordings list
             </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 grow">
             Hello
         </CardContent>
-        <CardFooter>
-            test
+        <CardFooter className="block grow-0 h-64">
+            <ServerLogs />
         </CardFooter>
     </Card>
 }
