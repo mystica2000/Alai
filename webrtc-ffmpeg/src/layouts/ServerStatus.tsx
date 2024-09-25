@@ -1,9 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { useServerState } from "@/hooks/useServerState";
+
 
 type ServerState = "outline" | "secondary" | "destructive";
 
 export default function ServerStatus() {
+
+    const addToLog = useServerState((state) => state.addToLog);
 
     const [serverState, setServerState] = useState<ServerState>("outline");
 
@@ -12,10 +16,12 @@ export default function ServerStatus() {
             const fetchUrl = new URL('http://localhost:8080/server_test');
             const response = await fetch(fetchUrl.href);
             (await response.text());
+            addToLog({ type: "info", text: "Server is Connected!" });
             setServerState("secondary");
         } catch (error) {
             console.error(error);
             setServerState("destructive");
+            addToLog({ type: "error", text: "Server Connected Failed!" });
         }
     }
 
