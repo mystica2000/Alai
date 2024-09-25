@@ -1,25 +1,20 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useServerState } from "@/hooks/useServerState";
 import MicButton from "@/icon/MicButton";
-// import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 
 export default function Record() {
 
-    // const scrollContainer = useRef(null);
-
-    // useEffect(() => {
-
-    //     if (scrollContainer != null && scrollContainer.current != null) {
-    //         console.log(scrollContainer.current);
-    //         ((scrollContainer.current as HTMLDivElement))?.scrollIntoView({ behavior: "instant", block: "end" });
-    //     }
-
-    //     console.log("added new");
-
-    // }, [scrollContainer])
-
     const logs = useServerState((state) => state.log);
+    const dummy = useRef(null);
+
+    useEffect(() => {
+        if (dummy != null && dummy.current != null) {
+            ((dummy.current as HTMLDivElement))?.scrollIntoView({ behavior: "instant", block: "end" });
+        }
+
+    }, [logs])
 
     return <Card className="h-full flex flex-col">
         <CardHeader className="flex-none ">
@@ -35,12 +30,12 @@ export default function Record() {
         </CardContent>
         <CardFooter className="block grow-0 h-64">
             <h2>Logs:</h2>
-            {/* ref={scrollContainer}  */}
             <div className="border-slate-800 border-2 p-3 mt-3 border-rounded border-radius-10 h-[13rem] rounded-lg overflow-y-auto">
                 {
                     logs.map((aLog) => <div key={aLog.id?.toString()} className={aLog.type == "error" ? "text-red-400" : "text-lime-300"}>{aLog.text}
                     </div>)
                 }
+                <div ref={dummy} />
             </div>
         </CardFooter>
     </Card>
