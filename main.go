@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -229,6 +231,66 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func extractNumber(name string) int {
+	parts := strings.Split(name, "_")
+	if len(parts) > 1 {
+		var num int
+
+		fmt.Sscanf(parts[1], "%d", &num)
+		return num
+	}
+	return 0
+}
+
+func handleGetRecordings(w http.ResponseWriter) {
+
+	file, err := os.Open("recordings")
+	if err != nil {
+		http.Error(w, "Could not open recordings directory", http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+
+	entries, err := file.Readdirnames(0)
+	if err != nil {
+		http.Error(w, "Could not read recordings", http.StatusInternalServerError)
+		return
+	}
+
+	var recordings []string
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry, ".ogg") {
+			nameWithoutExtension := strings.TrimSuffix(entry, filepath.Ext(entry))
+			recordings = append(recordings, nameWithoutExtension)
+		}
+	}
+
+	sort.Slice(recordings, func(i, j int) bool {
+		return extractNumber(recordings[i]) < extractNumber(recordings[j])
+	})
+
+	response := map[string][]string{
+		"recordings": recordings,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode recordings to JSON", http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleDeleteRecording(w http.ResponseWriter, id string) {
+
+	if id == "" {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+}
+
 func CORSMiddleware(allowedMethods []string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -275,10 +337,10 @@ func main() {
 				return
 			}
 			// Perform delete operation with the ID
-			w.Write([]byte("Recording deleted with ID: " + id))
+			handleDeleteRecording(w, id)
 			return
 		} else {
-			w.Write([]byte("Server is running"))
+			handleGetRecordings(w)
 		}
 
 	}))
