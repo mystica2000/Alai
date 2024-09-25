@@ -17,7 +17,9 @@ export default function ServerLogs() {
         <h2>Logs:</h2>
         <div className="border-slate-800 border-2 p-3 mt-3 border-rounded border-radius-10 h-[13rem] rounded-lg overflow-y-auto">
             {
-                logs.map((aLog) => <div key={aLog.id?.toString()} className={aLog.type == "error" ? "text-red-400" : "text-lime-300"}>{aLog.text}
+                logs.map((aLog) => <div key={aLog.id?.toString()} className={aLog.type == "error" ? "text-red-400" : "text-lime-300"}>
+                    {aLog.type == "error" ? "[ERROR]: " : "[INFO]: "}
+                    {aLog.text}
                 </div>)
             }
             <div ref={dummy} />

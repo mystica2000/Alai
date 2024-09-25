@@ -9,18 +9,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 )
-
-type AudioState struct {
-	isPaused atomic.Bool
-	writer   *oggwriter.OggWriter
-}
 
 type Message struct {
 	MsgType     string `json:"type"`
@@ -52,19 +46,19 @@ func createTempFileName() string {
 	return fname
 }
 
-func initializeWebRTCPeer() (*webrtc.PeerConnection, *AudioState, error) {
+func initializeWebRTCPeer() (*webrtc.PeerConnection, error) {
 	fmt.Println("Initializing Peer Connection")
 
 	mediaEngine := &webrtc.MediaEngine{}
 
 	if err := mediaEngine.RegisterDefaultCodecs(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	i := &interceptor.Registry{}
 
 	if err := webrtc.RegisterDefaultInterceptors(mediaEngine, i); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(mediaEngine), webrtc.WithInterceptorRegistry(i))
@@ -72,21 +66,16 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, *AudioState, error) {
 	pc, err := api.NewPeerConnection(webrtc.Configuration{})
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	oggFile, err := oggwriter.New(createTempFileName(), 48000, 2)
 	if err != nil {
 		panic(err)
-	}
-
-	audioState := &AudioState{
-		isPaused: atomic.Bool{},
-		writer:   oggFile,
 	}
 
 	pc.OnTrack(func(tr *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
@@ -95,7 +84,7 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, *AudioState, error) {
 
 		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeOpus) {
 			fmt.Println("Got opus track, saving to disk as output.opus ")
-			saveToDisk(audioState, tr)
+			saveToDisk(oggFile, tr)
 		}
 	})
 
@@ -119,15 +108,10 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, *AudioState, error) {
 		}
 	})
 
-	return pc, audioState, nil
+	return pc, nil
 }
 
-func saveToDisk(state *AudioState, track *webrtc.TrackRemote) {
-	defer func() {
-		if err := state.writer.Close(); err != nil {
-			panic(err)
-		}
-	}()
+func saveToDisk(oggFile *oggwriter.OggWriter, track *webrtc.TrackRemote) {
 
 	for {
 		rtpPacket, _, err := track.ReadRTP()
@@ -136,13 +120,10 @@ func saveToDisk(state *AudioState, track *webrtc.TrackRemote) {
 			return
 		}
 
-		if !state.isPaused.Load() {
-			if err := state.writer.WriteRTP(rtpPacket); err != nil {
-				fmt.Print(err)
-				return
-			}
+		if err := oggFile.WriteRTP(rtpPacket); err != nil {
+			fmt.Print(err)
+			return
 		}
-
 	}
 }
 
@@ -172,7 +153,7 @@ func encodeSDPtoBase64(obj *webrtc.SessionDescription) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
-func serverWs(w http.ResponseWriter, r *http.Request) {
+func serveWS(w http.ResponseWriter, r *http.Request) {
 
 	c, err := upgrader.Upgrade(w, r, nil)
 
@@ -184,7 +165,7 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 	defer c.Close()
 
 	var pc *webrtc.PeerConnection
-	pc, audioState, rtcError := initializeWebRTCPeer()
+	pc, rtcError := initializeWebRTCPeer()
 	if rtcError != nil {
 		log.Fatal("Failed to initialize WebRTC peer:", err)
 	}
@@ -208,7 +189,7 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 			log.Println("JSON unmarshal error: ", err)
 			continue
 		}
-		fmt.Printf("%v", msg.MessageText)
+
 		switch msg.MsgType {
 		case "offer":
 			{
@@ -239,11 +220,6 @@ func serverWs(w http.ResponseWriter, r *http.Request) {
 				encodedSDP := encodeSDPtoBase64(pc.LocalDescription())
 				c.WriteMessage(mt, []byte(encodedSDP)) // return answer
 			}
-		case "pause":
-			{
-				audioState.isPaused.Store(msg.IsPaused)
-
-			}
 		default:
 			{
 				log.Println("No Message!!")
@@ -270,7 +246,15 @@ func main() {
 		w.Write([]byte("Server is running"))
 	}))
 
-	http.HandleFunc("/ws", serverWs)
+	http.HandleFunc("/ws", serveWS)
+
+	http.HandleFunc("/recordings", CORS(func(w http.ResponseWriter, r *http.Request) {
+
+	}))
+
+	http.HandleFunc("/recordings/:id", CORS(func(w http.ResponseWriter, r *http.Request) {
+
+	}))
 
 	fmt.Println("Server is running at http://localhost:8080/")
 	httpServerErr := http.ListenAndServe("0.0.0.0:8080", nil)
