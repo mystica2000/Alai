@@ -1,20 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-    darkMode: ["class"],
-    content: [
+  darkMode: ["class"],
+  content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-  	extend: {
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		colors: {}
-  	}
+    extend: {
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
+      },
+      colors: {
+        black: '#000000',
+        indigo: {
+          DEFAULT: '#5c6ac4',
+          dark: '#202e78'
+        }
+      }
+    }
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require('tailwind-scrollbar'),],
 }
 
