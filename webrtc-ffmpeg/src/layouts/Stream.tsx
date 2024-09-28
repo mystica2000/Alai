@@ -2,10 +2,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import ServerLogs from "./ServerLogs";
 import { useEffect, useState } from "react";
 import ARecord from "./ARecord";
+import { Record } from "@/lib/types";
+
 
 export default function Stream() {
 
-    const [recordings, setRecordings] = useState<string[]>([]);
+    const [recordings, setRecordings] = useState<Record[]>([]);
 
     const fetchRecordings = async () => {
 
@@ -14,7 +16,7 @@ export default function Stream() {
             const result = await fetch(fetchUrl.href);
             const response = (await result.json());
 
-            setRecordings(response.recordings);
+            setRecordings(JSON.parse(atob(response.recordings)));
         } catch (error) {
             console.log(error);
         }

@@ -7,8 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -43,7 +41,7 @@ func createTempFileName() string {
 		panic(err)
 	}
 
-	fname := "recordings/output_" + strconv.Itoa(len(entries)+1) + ".ogg"
+	fname := "recordings/recording_" + strconv.Itoa(len(entries)+1) + ".ogg"
 
 	return fname
 }
@@ -92,21 +90,23 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, error) {
 
 	pc.OnICEConnectionStateChange(func(cs webrtc.ICEConnectionState) {
 		fmt.Printf("Connection State has changed %s \n", cs)
+		fmt.Println(webrtc.ICEConnectionStateClosed)
 
-		if cs == webrtc.ICEConnectionStateDisconnected || cs == webrtc.ICEConnectionStateFailed {
+		if cs == webrtc.ICEConnectionStateDisconnected || cs == webrtc.ICEConnectionStateFailed || cs == webrtc.ICEConnectionStateClosed {
 
 			if closeError := oggFile.Close(); closeError != nil {
+				fmt.Println("WATTTTTTTT", closeError)
 				panic(closeError)
 			}
 
 			fmt.Println("Done writing media files")
 
+			AddFileToDB()
+
 			// Gracefully shutdown the peer connection
 			if closeErr := pc.Close(); closeErr != nil {
 				panic(closeErr)
 			}
-
-			os.Exit(0)
 		}
 	})
 
@@ -231,47 +231,17 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func extractNumber(name string) int {
-	parts := strings.Split(name, "_")
-	if len(parts) > 1 {
-		var num int
-
-		fmt.Sscanf(parts[1], "%d", &num)
-		return num
-	}
-	return 0
-}
-
 func handleGetRecordings(w http.ResponseWriter) {
 
-	file, err := os.Open("recordings")
-	if err != nil {
-		http.Error(w, "Could not open recordings directory", http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
+	content, err := GetRecords()
 
-	entries, err := file.Readdirnames(0)
 	if err != nil {
-		http.Error(w, "Could not read recordings", http.StatusInternalServerError)
+		http.Error(w, "Could not GET", http.StatusInternalServerError)
 		return
 	}
 
-	var recordings []string
-
-	for _, entry := range entries {
-		if strings.HasSuffix(entry, ".ogg") {
-			nameWithoutExtension := strings.TrimSuffix(entry, filepath.Ext(entry))
-			recordings = append(recordings, nameWithoutExtension)
-		}
-	}
-
-	sort.Slice(recordings, func(i, j int) bool {
-		return extractNumber(recordings[i]) < extractNumber(recordings[j])
-	})
-
-	response := map[string][]string{
-		"recordings": recordings,
+	response := map[string][]byte{
+		"recordings": content,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
