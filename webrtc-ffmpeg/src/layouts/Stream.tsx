@@ -1,11 +1,13 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import ServerLogs from "./ServerLogs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ARecord from "./ARecord";
 import { Record } from "@/lib/types";
 
 
 export default function Stream() {
+
+    const renderAfterCalled = useRef(false)
 
     const [recordings, setRecordings] = useState<Record[]>([]);
 
@@ -23,7 +25,12 @@ export default function Stream() {
     }
 
     useEffect(() => {
-        fetchRecordings();
+
+        if (!renderAfterCalled.current) {
+            fetchRecordings();
+        }
+
+        renderAfterCalled.current = true;
     }, []);
 
     return <Card className="h-full flex flex-col">
@@ -37,7 +44,7 @@ export default function Stream() {
             <ul >
                 {
                     recordings && recordings.map((aRecording) => (
-                        <ARecord record={aRecording} />
+                        <ARecord record={aRecording} key={aRecording.id} />
                     ))
                 }
             </ul>

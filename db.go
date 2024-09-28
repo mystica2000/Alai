@@ -18,8 +18,9 @@ type Record struct {
 
 // TrimmedRecord struct excludes CreatedAt and Symlink
 type TrimmedRecord struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID        int           `json:"id"`
+	Name      string        `json:"name"`
+	CreatedAt unixTimestamp `json:"created_at"`
 }
 
 type unixTimestamp time.Time
@@ -148,8 +149,9 @@ func GetRecords() ([]byte, error) {
 	// Map records to the new struct
 	for _, record := range records {
 		trimmedRecords = append(trimmedRecords, TrimmedRecord{
-			ID:   record.ID,
-			Name: record.Name,
+			ID:        record.ID,
+			Name:      record.Name,
+			CreatedAt: record.CreatedAt,
 		})
 	}
 
