@@ -261,6 +261,10 @@ func handleDeleteRecording(w http.ResponseWriter, id string) {
 
 }
 
+func handleUpdateRecording(w http.ResponseWriter) {
+
+}
+
 func CORSMiddleware(allowedMethods []string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -293,9 +297,9 @@ func main() {
 
 	http.HandleFunc("/ws", serveWS)
 
-	http.HandleFunc("/recordings/", CORSMiddleware([]string{"GET", "POST"})(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/recordings/", CORSMiddleware([]string{"GET", "POST", "PUT"})(func(w http.ResponseWriter, r *http.Request) {
 
-		if r.Method != http.MethodGet && r.Method != http.MethodDelete {
+		if r.Method != http.MethodGet && r.Method != http.MethodDelete && r.Method != http.MethodPut {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
@@ -309,6 +313,8 @@ func main() {
 			// Perform delete operation with the ID
 			handleDeleteRecording(w, id)
 			return
+		} else if r.Method == http.MethodPut {
+			handleUpdateRecording(w)
 		} else {
 			handleGetRecordings(w)
 		}
