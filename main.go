@@ -1,26 +1,37 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
+	"github.com/pion/webrtc/v4/pkg/media"
+	"github.com/pion/webrtc/v4/pkg/media/oggreader"
 	"github.com/pion/webrtc/v4/pkg/media/oggwriter"
 )
 
 type Message struct {
 	MsgType     string `json:"type"`
 	MessageText string `json:"msg,omitempty"`
-	IsPaused    bool   `json:"pause,omitempty"`
+	MsgOption   string `json:"option, omitempty"`
+	Payload     int    `json:"payload, omitempty"`
 }
+
+const (
+	oggPageDuration = time.Millisecond * 20
+)
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
@@ -69,7 +80,113 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, error) {
 		return nil, err
 	}
 
-	if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
+	return pc, nil
+}
+
+func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int) (*webrtc.PeerConnection, error) {
+	iceConnectedCtx, iceConnectedCtxCancel := context.WithCancel(context.Background())
+
+	audioTrack, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pion")
+
+	if err != nil {
+		log.Println("Error on local static sample")
+		return nil, err
+	}
+
+	rtpSender, err := pc.AddTrack(audioTrack)
+	if err != nil {
+		log.Println("Error on AddTrack")
+		return nil, err
+	}
+
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := rtpSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+
+	fileName, err := GetRecordFileNameByID(id)
+
+	if err != nil {
+		fmt.Println("Error: %v", err)
+		return nil, err
+	}
+
+	go func() {
+		file, oggErr := os.Open("recordings/" + fileName + ".ogg")
+
+		if oggErr != nil {
+			panic(oggErr)
+		}
+
+		ogg, _, oggErr := oggreader.NewWith(file)
+		if oggErr != nil {
+			panic(oggErr)
+		}
+
+		<-iceConnectedCtx.Done()
+
+		var lastGranule uint64
+
+		ticker := time.NewTicker(oggPageDuration)
+		defer ticker.Stop()
+
+		for ; true; <-ticker.C {
+			pageData, pageHeader, oggErr := ogg.ParseNextPage()
+
+			if errors.Is(oggErr, io.EOF) {
+				fmt.Printf("All audio pages parsed and sent")
+				pc.Close()
+				return
+			}
+
+			if oggErr != nil {
+				panic(oggErr)
+			}
+
+			sampleCount := float64(pageHeader.GranulePosition - lastGranule)
+			lastGranule = pageHeader.GranulePosition
+			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
+
+			if oggErr = audioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
+				panic(oggErr)
+			}
+		}
+	}()
+
+	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		fmt.Printf("Connection State has changed %s \n", connectionState.String())
+		if connectionState == webrtc.ICEConnectionStateConnected {
+			iceConnectedCtxCancel()
+		}
+	})
+
+	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
+		fmt.Printf("Peer Connection State has changed: %s\n", s.String())
+
+		if s == webrtc.PeerConnectionStateFailed {
+			// Wait until PeerConnection has had no network activity for 30 seconds or another failure. It may be reconnected using an ICE Restart.
+			// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
+			// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
+			fmt.Println("Peer Connection has gone to failed exiting")
+			pc.Close()
+		}
+
+		if s == webrtc.PeerConnectionStateClosed {
+			// PeerConnection was explicitly closed. This usually happens from a DTLS CloseNotify
+			fmt.Println("Peer Connection has gone to closed exiting")
+			pc.Close()
+		}
+	})
+
+	return pc, nil
+}
+
+func initialSaveToDiskPeerConnection(pc *webrtc.PeerConnection) (*webrtc.PeerConnection, error) {
+	if _, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio); err != nil {
 		return nil, err
 	}
 
@@ -166,18 +283,6 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 
 	defer c.Close()
 
-	var pc *webrtc.PeerConnection
-	pc, rtcError := initializeWebRTCPeer()
-	if rtcError != nil {
-		log.Fatal("Failed to initialize WebRTC peer:", err)
-	}
-
-	defer func() {
-		if closeError := pc.Close(); closeError != nil {
-			fmt.Printf("cannot close peerconnection %v\n", closeError)
-		}
-	}()
-
 	for {
 
 		mt, message, err := c.ReadMessage()
@@ -190,6 +295,47 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Println("JSON unmarshal error: ", err)
 			continue
+		}
+
+		if msg.MsgOption != "record" && msg.MsgOption != "listen" {
+			log.Println("Invalid MESSAGE: ", err)
+			continue
+		}
+
+		var pc *webrtc.PeerConnection
+		pc, rtcError := initializeWebRTCPeer()
+		if rtcError != nil {
+			log.Fatal("Failed to initialize WebRTC peer:", err)
+		}
+
+		defer func() {
+			if closeError := pc.Close(); closeError != nil {
+				fmt.Printf("cannot close peerconnection %v\n", closeError)
+			}
+		}()
+
+		if msg.MsgOption == "record" {
+
+			pc, err = initialSaveToDiskPeerConnection(pc)
+
+			if err != nil {
+				log.Println("initializing save to disk: ", err)
+				continue
+			}
+
+		} else {
+
+			if msg.Payload <= 0 {
+				log.Println("Payload missing ", err)
+				return
+			}
+
+			pc, err = initialLoadFromDiskPeerConnection(pc, msg.Payload)
+
+			if err != nil {
+				log.Println("initializing load from disk: ", err)
+				continue
+			}
 		}
 
 		switch msg.MsgType {

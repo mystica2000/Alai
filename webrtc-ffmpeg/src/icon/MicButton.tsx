@@ -56,7 +56,7 @@ export default function MicButton() {
 
             pc.onicecandidate = async (event) => {
                 if (event.candidate == null) {
-                    websocket.send(JSON.stringify({ type: "offer", msg: btoa(JSON.stringify(pc.localDescription)) }));
+                    websocket.send(JSON.stringify({ type: "offer", option: "record", msg: btoa(JSON.stringify(pc.localDescription)) }));
                 }
             }
 

@@ -18,6 +18,9 @@ export default {
           DEFAULT: '#5c6ac4',
           dark: '#202e78'
         }
+      },
+      scale: {
+        '175': '1.75',
       }
     }
   },

@@ -167,3 +167,25 @@ func GetRecords() ([]byte, error) {
 
 	return jsonData, nil
 }
+
+func GetRecordFileNameByID(id int) (string, error) {
+	err := LoadDBFromDisk()
+	if err != nil {
+		return "", err
+	}
+
+	fileName := ""
+
+	for _, record := range records {
+		if record.ID == id {
+			fileName = record.Symlink
+			break
+		}
+	}
+
+	if fileName == "" {
+		return "", fmt.Errorf("Not Found Record for %d", id)
+	}
+
+	return fileName, nil
+}
