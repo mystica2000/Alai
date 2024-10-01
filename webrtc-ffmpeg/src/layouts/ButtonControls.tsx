@@ -8,12 +8,6 @@ interface ARecordProps {
     websocketConnection: WebSocket | undefined
 }
 
-const DISABLE = {
-    PLAY: 1,
-    STOP: 2
-}
-
-
 export default function ButtonControls({ id, websocketConnection }: ARecordProps) {
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -21,14 +15,35 @@ export default function ButtonControls({ id, websocketConnection }: ARecordProps
     const [peerConnection, setPeerConnection] = useState<RTCPeerConnection>();
     const { playRecord, stopAllRecords, stopRecord, getPlayingRecord } = usePlayStopState();
 
+    const allStopped = usePlayStopState((state) => state.allStopped);
+    const setAllStopped = usePlayStopState((state) => state.setAllStopped);
+
+    useEffect(() => {
+
+        if (allStopped) {
+            setAllStopped(false);
+
+            if (audioRef.current) {
+                audioRef.current.srcObject = null;
+                audioRef.current.currentTime = 0;
+                audioRef.current.pause();
+            }
+        }
+
+    }, [allStopped, setAllStopped])
+
+
     useEffect(() => {
         // Effect to handle audio stream changes
         if (audioRef.current && audioStream) {
+            console.log("settingggg@!")
             audioRef.current.srcObject = audioStream;
             audioRef.current.play().catch(e => console.error("Error playing audio:", e));
         }
     }, [audioStream]);
 
+    // FIXED: Probelm is audioRef have to be, stop all the audio Ref.. not only current!
+    // so store it on global state and update stopAllRecords function so that, it pauses and stops resets all tthe audio
 
     const initializePeerConnection = async () => {
         console.log("Current WebSocket:", websocketConnection);
@@ -56,7 +71,7 @@ export default function ButtonControls({ id, websocketConnection }: ARecordProps
                 if (pc.connectionState == "closed" || pc.connectionState == "disconnected" || pc.connectionState == "failed") {
                     setAudioStream(null);
                     pc.close();
-                    stopRecord(id);
+                    stopAllRecords();
                 }
             }
 
@@ -90,6 +105,7 @@ export default function ButtonControls({ id, websocketConnection }: ARecordProps
         if (websocketConnection) {
             stopAllRecords();
             playRecord(id);
+            setAudioStream(null);
             initializePeerConnection();
         }
     }

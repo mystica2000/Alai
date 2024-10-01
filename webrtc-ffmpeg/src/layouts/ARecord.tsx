@@ -1,7 +1,7 @@
 import DeleteButton from "@/icon/DeleteButton";
 import EditButton from "@/icon/EditButton";
 import ButtonControls from "./ButtonControls";
-import { Record } from "@/hooks/useServerState";
+import { Record } from "@/hooks/useServerState"
 
 interface ARecordProps {
     record: Record;

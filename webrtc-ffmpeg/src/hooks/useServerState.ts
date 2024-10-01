@@ -39,33 +39,36 @@ export type Record = {
     name: string;
     created_at: number
     isPlaying?: boolean
-    disable?: "stop" | "play"
 }
 
 type RecordState = {
     records: Record[]
+    allStopped: boolean
 }
 
-type Optional = 'isPlaying' | 'disable'
-
 type RecordAction = {
-    appendRecord: (newRecord: Omit<Record, Optional>) => void
-    appendRecords: (newRecords: Omit<Record, Optional>[]) => void
+    appendRecord: (newRecord: Omit<Record, "isPlaying">) => void
+    appendRecords: (newRecords: Omit<Record, "isPlaying">[]) => void
     playRecord: (id: number) => void
     stopRecord: (id: number) => void
     stopAllRecords: () => void
     getPlayingRecord: () => Record | undefined
     updateRecord: (record: Record) => void
     deleteRecord: (id: number) => void
+    setAllStopped: (value: boolean) => void;
 }
 
 
 export const usePlayStopState = create<RecordState & RecordAction>((set, get) => ({
     records: [],
+    allStopped: false,
+    setAllStopped: (value) => set({ allStopped: value }), // To reset the flag after handling
+
     appendRecord: (newRecord) =>
         set((prev) => ({
-            records: [...prev.records, { ...newRecord, isPlaying: false, disable: "stop" }]
+            records: [...prev.records, { ...newRecord, isPlaying: false }]
         })),
+
     appendRecords: (newRecords) =>
         set((state) => ({
             records: [
@@ -73,22 +76,25 @@ export const usePlayStopState = create<RecordState & RecordAction>((set, get) =>
                 ...newRecords.map((record) => ({
                     ...record,
                     isPlaying: false,
-                    disable: "stop",
                 }) as Record),  // Explicitly casting as Record
             ],
         })),
+
     playRecord: (id) => set((state) => ({
         records: state.records.map(record =>
-            record.id === id ? { ...record, isPlaying: true, disable: "play" } : { ...record, isPlaying: false, disable: "stop" }
+            record.id === id ? { ...record, isPlaying: true } : { ...record, isPlaying: false }
         )
     })),
+
     stopRecord: (id) => set((state) => ({
         records: state.records.map(record =>
-            record.id === id ? { ...record, isPlaying: false, disable: "stop" } : record
-        )
+            record.id === id ? { ...record, isPlaying: false } : record
+        ),
     })),
+
     stopAllRecords: () => set((state) => ({
-        records: state.records.map(record => ({ ...record, isPlaying: false, disable: "stop" }))
+        records: state.records.map(record => ({ ...record, isPlaying: false })),
+        allStopped: true
     })),
 
     getPlayingRecord: () => get().records.find(record => record.isPlaying) || undefined,
