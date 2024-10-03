@@ -1,10 +1,26 @@
+import { useEffect, useRef } from 'react'
 import './App.css'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
+import useWebSocketStore from './hooks/useWebsocket'
 import Record from './layouts/Record'
 import ServerStatus from './layouts/ServerStatus'
 import Stream from './layouts/Stream'
 
 function App() {
+
+  const renderAfterCalled = useRef(false)
+  const { initializeWebsocket } = useWebSocketStore();
+
+
+  useEffect(() => {
+
+    if (!renderAfterCalled.current) {
+      initializeWebsocket();
+    }
+
+    renderAfterCalled.current = true;
+
+  }, []);
 
   return (
     <>

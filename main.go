@@ -29,6 +29,11 @@ type Message struct {
 	Payload     int    `json:"payload, omitempty"`
 }
 
+type CommandResponse struct {
+	ID  int    `json:"payload`
+	Msg string `json:"msg"`
+}
+
 const (
 	oggPageDuration = time.Millisecond * 20
 )
@@ -83,8 +88,23 @@ func initializeWebRTCPeer() (*webrtc.PeerConnection, error) {
 	return pc, nil
 }
 
-func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int) (*webrtc.PeerConnection, error) {
+func setReadFile(headerSize int64, filename string) func(_ int64) io.Reader {
+	return func(_ int64) io.Reader {
+		file, err := os.Open("recordings/" + filename + ".ogg") // nolint
+		if err != nil {
+			panic(err)
+		}
+
+		if _, err := file.Seek(headerSize, io.SeekStart); err != nil {
+			panic(err)
+		}
+		return file
+	}
+}
+
+func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int, ws *websocket.Conn, mt int) (*webrtc.PeerConnection, error) {
 	iceConnectedCtx, iceConnectedCtxCancel := context.WithCancel(context.Background())
+	defer iceConnectedCtxCancel()
 
 	audioTrack, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeOpus}, "audio", "pion")
 
@@ -111,16 +131,19 @@ func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int) (*webr
 	fileName, err := GetRecordFileNameByID(id)
 
 	if err != nil {
-		fmt.Println("Error: %v", err)
+		fmt.Printf("Error: %v", err)
 		return nil, err
 	}
 
 	go func() {
+
 		file, oggErr := os.Open("recordings/" + fileName + ".ogg")
 
 		if oggErr != nil {
 			panic(oggErr)
 		}
+
+		defer file.Close()
 
 		ogg, _, oggErr := oggreader.NewWith(file)
 		if oggErr != nil {
@@ -138,23 +161,43 @@ func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int) (*webr
 			pageData, pageHeader, oggErr := ogg.ParseNextPage()
 
 			if errors.Is(oggErr, io.EOF) {
-				fmt.Printf("All audio pages parsed and sent")
-				pc.Close()
+				fmt.Println("All audio pages parsed and sent!! ")
+
+				message := CommandResponse{
+					ID:  id,
+					Msg: "stop_done",
+				}
+
+				// Convert the message to JSON
+				jsonMessage, err := json.Marshal(message)
+				if err != nil {
+					log.Println("Error marshaling JSON:", err)
+				}
+
+				ws.WriteMessage(mt, jsonMessage)
+				lastGranule = 0
+				// Gracefully shutdown the peer connection
+				if closeErr := pc.Close(); closeErr != nil {
+					panic(closeErr)
+				}
 				return
 			}
 
 			if oggErr != nil {
-				panic(oggErr)
+				log.Printf("Error parsing OGG page: %v", err)
+				return
 			}
 
 			sampleCount := float64(pageHeader.GranulePosition - lastGranule)
 			lastGranule = pageHeader.GranulePosition
+			fmt.Println(lastGranule)
 			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
-
 			if oggErr = audioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
-				panic(oggErr)
+				log.Printf("Error writing sample: %v", err)
+				return
 			}
 		}
+
 	}()
 
 	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -172,13 +215,32 @@ func initialLoadFromDiskPeerConnection(pc *webrtc.PeerConnection, id int) (*webr
 			// Use webrtc.PeerConnectionStateDisconnected if you are interested in detecting faster timeout.
 			// Note that the PeerConnection may come back from PeerConnectionStateDisconnected.
 			fmt.Println("Peer Connection has gone to failed exiting")
-			pc.Close()
+			// Gracefully shutdown the peer connection
+			if closeErr := pc.Close(); closeErr != nil {
+				panic(closeErr)
+			}
 		}
 
 		if s == webrtc.PeerConnectionStateClosed {
 			// PeerConnection was explicitly closed. This usually happens from a DTLS CloseNotify
 			fmt.Println("Peer Connection has gone to closed exiting")
-			pc.Close()
+			// Gracefully shutdown the peer connection
+			if closeErr := pc.Close(); closeErr != nil {
+				panic(closeErr)
+			}
+		}
+	})
+
+	pc.OnICEConnectionStateChange(func(cs webrtc.ICEConnectionState) {
+		fmt.Printf("Connection State has changed %s \n", cs)
+		fmt.Println(webrtc.ICEConnectionStateClosed)
+
+		if cs == webrtc.ICEConnectionStateDisconnected || cs == webrtc.ICEConnectionStateFailed || cs == webrtc.ICEConnectionStateClosed {
+
+			// Gracefully shutdown the peer connection
+			if closeErr := pc.Close(); closeErr != nil {
+				panic(closeErr)
+			}
 		}
 	})
 
@@ -197,7 +259,6 @@ func initialSaveToDiskPeerConnection(pc *webrtc.PeerConnection) (*webrtc.PeerCon
 
 	pc.OnTrack(func(tr *webrtc.TrackRemote, r *webrtc.RTPReceiver) {
 		codec := tr.Codec()
-		fmt.Print(codec)
 
 		if strings.EqualFold(codec.MimeType, webrtc.MimeTypeOpus) {
 			fmt.Println("Got opus track, saving to disk as output.opus ")
@@ -283,6 +344,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 
 	defer c.Close()
 
+	var pc *webrtc.PeerConnection
 	for {
 
 		mt, message, err := c.ReadMessage()
@@ -297,24 +359,61 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if msg.MsgOption != "record" && msg.MsgOption != "listen" {
+		if msg.MsgOption != "record" && msg.MsgOption != "listen" && msg.MsgOption != "command" {
 			log.Println("Invalid MESSAGE: ", err)
 			continue
 		}
 
-		var pc *webrtc.PeerConnection
-		pc, rtcError := initializeWebRTCPeer()
-		if rtcError != nil {
-			log.Fatal("Failed to initialize WebRTC peer:", err)
+		switch msg.MsgType {
+		case "offer":
+			{
+
+			}
+		default:
+			{
+				log.Println("No Message!!")
+			}
 		}
 
-		defer func() {
-			if closeError := pc.Close(); closeError != nil {
-				fmt.Printf("cannot close peerconnection %v\n", closeError)
-			}
-		}()
-
 		if msg.MsgOption == "record" {
+
+			pc, rtcError := initializeWebRTCPeer()
+			if rtcError != nil {
+				log.Fatal("Failed to initialize WebRTC peer:", err)
+			}
+
+			defer func() {
+				if closeError := pc.Close(); closeError != nil {
+					fmt.Printf("cannot close peerconnection %v\n", closeError)
+				}
+			}()
+
+			offer := webrtc.SessionDescription{}
+			decodeBase64ToSDP(string(msg.MessageText), &offer)
+
+			err = pc.SetRemoteDescription(offer)
+			if err != nil {
+				panic(err)
+			}
+
+			answer, err := pc.CreateAnswer(nil)
+
+			if err != nil {
+				panic(err)
+			}
+
+			// similar to onIceCandidate call on the browser
+			gatherComplete := webrtc.GatheringCompletePromise(pc)
+
+			err = pc.SetLocalDescription(answer)
+			if err != nil {
+				panic(err)
+			}
+
+			<-gatherComplete
+
+			encodedSDP := encodeSDPtoBase64(pc.LocalDescription())
+			c.WriteMessage(mt, []byte(encodedSDP)) // return answer
 
 			pc, err = initialSaveToDiskPeerConnection(pc)
 
@@ -323,54 +422,101 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
-		} else {
+		} else if msg.MsgOption == "listen" {
+
+			pc, rtcError := initializeWebRTCPeer()
+			if rtcError != nil {
+				log.Fatal("Failed to initialize WebRTC peer:", err)
+			}
+
+			defer func() {
+				if closeError := pc.Close(); closeError != nil {
+					fmt.Printf("cannot close peerconnection %v\n", closeError)
+				}
+			}()
+
+			offer := webrtc.SessionDescription{}
+			decodeBase64ToSDP(string(msg.MessageText), &offer)
+
+			err = pc.SetRemoteDescription(offer)
+			if err != nil {
+				panic(err)
+			}
+
+			pc, err = initialLoadFromDiskPeerConnection(pc, msg.Payload, c, mt)
+
+			if err != nil {
+				log.Println("initializing load from disk: ", err)
+				continue
+			}
+
+			time.Sleep(100 * time.Millisecond)
+			answer, err := pc.CreateAnswer(nil)
+
+			if err != nil {
+				panic(err)
+			}
+
+			// similar to onIceCandidate call on the browser
+			gatherComplete := webrtc.GatheringCompletePromise(pc)
+
+			err = pc.SetLocalDescription(answer)
+			if err != nil {
+				panic(err)
+			}
+
+			<-gatherComplete
+
+			encodedSDP := encodeSDPtoBase64(pc.LocalDescription())
+			c.WriteMessage(mt, []byte(encodedSDP)) // return answer
 
 			if msg.Payload <= 0 {
 				log.Println("Payload missing ", err)
 				return
 			}
 
-			pc, err = initialLoadFromDiskPeerConnection(pc, msg.Payload)
+		} else if msg.MsgOption == "command" {
+			if msg.MessageText == "stop" {
 
-			if err != nil {
-				log.Println("initializing load from disk: ", err)
-				continue
-			}
-		}
+				if pc != nil {
+					if closeError := pc.Close(); closeError != nil {
+						fmt.Printf("cannot close peerconnection %v\n", closeError)
+					} else {
+						message := CommandResponse{
+							ID:  msg.Payload,
+							Msg: "stop_done",
+						}
 
-		switch msg.MsgType {
-		case "offer":
-			{
-				offer := webrtc.SessionDescription{}
-				decodeBase64ToSDP(string(msg.MessageText), &offer)
+						// Convert the message to JSON
+						jsonMessage, err := json.Marshal(message)
+						if err != nil {
+							log.Println("Error marshaling JSON:", err)
+						}
 
-				err = pc.SetRemoteDescription(offer)
-				if err != nil {
-					panic(err)
+						c.WriteMessage(mt, jsonMessage)
+					}
 				}
 
-				answer, err := pc.CreateAnswer(nil)
+			} else if msg.MessageText == "play" {
 
-				if err != nil {
-					panic(err)
+				if pc != nil {
+					if closeError := pc.Close(); closeError != nil {
+						fmt.Printf("cannot close peerconnection %v\n", closeError)
+					}
+				} else {
+					message := CommandResponse{
+						ID:  msg.Payload,
+						Msg: "stop_done_initial_peer_connection",
+					}
+
+					// Convert the message to JSON
+					jsonMessage, err := json.Marshal(message)
+					if err != nil {
+						log.Println("Error marshaling JSON:", err)
+					}
+
+					c.WriteMessage(mt, jsonMessage)
 				}
-
-				// similar to onIceCandidate call on the browser
-				gatherComplete := webrtc.GatheringCompletePromise(pc)
-
-				err = pc.SetLocalDescription(answer)
-				if err != nil {
-					panic(err)
-				}
-
-				<-gatherComplete
-
-				encodedSDP := encodeSDPtoBase64(pc.LocalDescription())
-				c.WriteMessage(mt, []byte(encodedSDP)) // return answer
-			}
-		default:
-			{
-				log.Println("No Message!!")
 			}
 		}
 

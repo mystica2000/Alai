@@ -1,16 +1,21 @@
 import { useRef, useState, useEffect } from "react";
 import ARecord from "./ARecord";
-import { usePlayStopState } from "@/hooks/useServerState";
+import { useRecordState } from "@/hooks/useRecordState";
+import useWebSocketStore from "@/hooks/useWebsocket";
 
 
 
 export default function Stream() {
 
 
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const renderAfterCalled = useRef(false)
+    const allStopped = useRecordState((state) => state.allStopped);
+    const { appendRecords, records } = useRecordState();
 
-    const [ws, setWs] = useState<WebSocket | undefined>();
-    const { appendRecords, records } = usePlayStopState();
+    const setAllStopped = useRecordState((state) => state.setAllStopped);
+
+    const { audioStream } = useWebSocketStore()
 
     const fetchRecordings = async () => {
         try {
@@ -32,45 +37,38 @@ export default function Stream() {
 
         renderAfterCalled.current = true;
 
-        initWs();
     }, []);
 
-    const initWs = async () => {
-        const ws = await startWS();
 
-        setWs(ws);
-    }
+    useEffect(() => {
 
-    const startWS = (): Promise<WebSocket> => {
-        return new Promise((resolve, reject) => {
+        if (allStopped) {
+            setAllStopped(false);
 
-            const wsConnection = new WebSocket("http://localhost:8080/ws");
-
-            wsConnection.onerror = (error) => {
-                console.log("connection error");
-                reject(error);
+            if (audioRef.current) {
+                audioRef.current.srcObject = null;
+                audioRef.current.currentTime = 0;
+                audioRef.current.pause();
             }
-
-            wsConnection.onclose = (event) => {
-                console.log("connection closed");
-                if (!event.wasClean) {
-                    reject(new Error("WebSocket connection closed unexpectedly"));
-                }
-            }
-
-            wsConnection.onopen = () => {
-                console.log("WebSocket connection opened");
-                resolve(wsConnection);
-            }
-
-        })
-    }
-
-    return <ul >
-        {
-            records && records.map((aRecording) => (
-                <ARecord record={aRecording} key={aRecording.id} websocketConnection={ws} />
-            ))
         }
-    </ul>
+
+    }, [allStopped])
+
+    useEffect(() => {
+        if (audioRef.current && audioStream) {
+            audioRef.current.srcObject = audioStream;
+            audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+        }
+    }, [audioStream]);
+
+    return <>
+        <ul >
+            {
+                records && records.map((aRecording) => (
+                    <ARecord record={aRecording} key={aRecording.id} />
+                ))
+            }
+        </ul>
+        <audio ref={audioRef} autoPlay />
+    </>
 }
