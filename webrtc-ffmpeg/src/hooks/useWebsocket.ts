@@ -40,7 +40,8 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
                     }
                 } else {
                     const msg = JSON.parse(message);
-                    if (msg.msg = "stop_done_initial_peer_connection") {
+                    if (msg.msg === "stop_done_initial_peer_connection") {
+                        get().closePeerConnection();
                         get().initializePeerConnection(Number(msg.ID))
                     }
                 }

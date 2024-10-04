@@ -9,27 +9,18 @@ interface ARecordProps {
 
 export default function ButtonControls({ ID }: ARecordProps) {
     const { playRecord, stopAllRecords, getPlayingRecord } = useRecordState();
-    const { initializePeerConnection, closePeerConnection, sendMessage } = useWebSocketStore()
+    const { sendMessage } = useWebSocketStore()
     const setAllStopped = useRecordState((state) => state.setAllStopped);
 
     const handlePlay = () => {
-
-        if (getPlayingRecord()) {
-            stopAllRecords();
-            closePeerConnection();
-            playRecord(ID);
-            sendMessage({ msg: "play", type: "command", option: "command", payload: ID });
-        } else {
-            closePeerConnection();
-            playRecord(ID);
-            initializePeerConnection(ID);
-        }
+        stopAllRecords();
+        playRecord(ID);
+        sendMessage({ msg: "play", type: "command", option: "command", payload: ID });
     }
 
     const handleStop = () => {
         setAllStopped(true);
         stopAllRecords();
-        closePeerConnection();
         sendMessage({ msg: "stop", type: "command", option: "command", payload: ID });
     }
 
