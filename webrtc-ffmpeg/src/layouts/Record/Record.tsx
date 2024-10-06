@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import MicButton from "@/icon/MicButton";
-import ServerLogs from "./ServerLogs";
+import ServerLogs from "../ServerLogs";
 
 
 export default function Record() {

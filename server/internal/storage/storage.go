@@ -1,9 +1,11 @@
-package main
+package storage
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	projectpath "server/internal/projectPath"
 	"sort"
 	"strconv"
 	"time"
@@ -114,7 +116,9 @@ func SaveToDB() error {
 
 func LoadDBFromDisk() error {
 
-	jsonData, err := os.ReadFile(dbName)
+	dataPath := filepath.Join(projectpath.Root, "internal/data", dbName)
+	jsonData, err := os.ReadFile(dataPath)
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			records = make(RecordSlice, 0)

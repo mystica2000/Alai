@@ -1,17 +1,19 @@
 import { useServerState } from "@/hooks/useServerState";
+import useWebSocketStore from "@/hooks/useWebsocket";
 import { useEffect, useState } from "react"
 
 export default function MicButton() {
 
     const [micOn, setMicOn] = useState(false);
     const [isActive, setIsActive] = useState(false);
-    const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>();
+    const { initializePeerConnection, sendMessage, closePeerConnection } = useWebSocketStore()
 
     const handleMicOn = async () => {
 
         if (micOn) {
             setMicOn((prevMic) => !prevMic);
-            peerConnection?.close();
+            sendMessage({ command: "stop", data: {} });
+            closePeerConnection();
         } else {
             const result = await askMicPermission();
             if (result != null) {
@@ -22,80 +24,8 @@ export default function MicButton() {
 
     const addToLog = useServerState((state) => state.addToLog);
 
-    const startWS = (): Promise<WebSocket> => {
-        return new Promise((resolve, reject) => {
-
-            const wsConnection = new WebSocket("http://localhost:8080/ws");
-
-            wsConnection.onerror = (error) => {
-                console.log("connection error");
-                reject(error);
-            }
-
-            wsConnection.onclose = (event) => {
-                console.log("connection closed");
-                if (!event.wasClean) {
-                    reject(new Error("WebSocket connection closed unexpectedly"));
-                }
-            }
-
-            wsConnection.onopen = () => {
-                console.log("WebSocket connection opened");
-                resolve(wsConnection);
-            }
-
-        })
-    }
-
-    const initializePeerConnection = async (stream: MediaStream, websocket: WebSocket) => {
-        const currentWebSocket = websocket;
-        console.log("Current WebSocket:", currentWebSocket);
-
-        if (websocket?.OPEN) {
-            const pc = new RTCPeerConnection();
-
-            pc.onicecandidate = async (event) => {
-                if (event.candidate == null) {
-                    websocket.send(JSON.stringify({ type: "offer", option: "record", msg: btoa(JSON.stringify(pc.localDescription)) }));
-                }
-            }
-
-            stream.getAudioTracks().forEach((track) => {
-                pc.addTrack(track, stream);
-            })
-
-            websocket.onmessage = async (event) => {
-                try {
-                    const message = event?.data;
-                    const sdp: RTCSessionDescription = JSON.parse(atob(message));
-
-                    if (sdp.type == "answer") {
-                        await pc.setRemoteDescription(sdp);
-                    }
-
-                } catch (e: unknown) {
-                    console.log(e);
-                }
-            }
-
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-
-                setPeerConnection(pc);
-            } catch (e) {
-                console.log("Offer failed");
-            }
-
-        } else {
-            console.log("Websockie gone")
-        }
-    }
-
     const askMicPermission = async (): Promise<MediaStream | null> => {
         try {
-
-            const websocket = await startWS();
 
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
@@ -108,11 +38,9 @@ export default function MicButton() {
             const audioContext = new AudioContext();
             audioContext.createMediaStreamSource(stream).connect(audioContext.createMediaStreamDestination());
 
-            await initializePeerConnection(stream, websocket);
+            initializePeerConnection("record", 0, stream);
 
             addToLog({ type: "info", text: "✅ Microphone" });
-
-            audioContext
 
             return stream;
         } catch (e: unknown) {

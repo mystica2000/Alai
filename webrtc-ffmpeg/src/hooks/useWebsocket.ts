@@ -1,15 +1,26 @@
-import { isJsonMessageSDP } from "@/lib/utils";
 import { create } from "zustand";
+
+interface Message {
+    command: "stop" | "play" | "record" | "listen"
+    payload?: number;
+    data: any;
+}
+
+interface MessageResult {
+    command: "stop_done" | "ice-candidate" | "answer"
+    result: any;
+    payload?: number;
+}
 
 interface WebsocketState {
     websocket: WebSocket | null;
     peerConnection: RTCPeerConnection | null
     audioStream: MediaStream | null
     initializeWebsocket: () => void;
-    initializePeerConnection: (id: number) => Promise<void>
+    initializePeerConnection: (command: "listen" | "record", id: number, stream?: MediaStream) => Promise<void>
     closePeerConnection: () => void;
     setAudioStream: (stream: MediaStream | null) => void;
-    sendMessage: (message: any) => void;
+    sendMessage: (message: Message) => void;
 }
 
 const useWebSocketStore = create<WebsocketState>((set, get) => ({
@@ -28,23 +39,33 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
             console.log("Websocket message received: ", event.data);
 
             try {
-                const message = event.data;
-                if (isJsonMessageSDP(message)) {
-                    const sdp = JSON.parse(atob(message));
-                    if (sdp.type === "answer") {
-                        get().peerConnection?.addEventListener("track", (event) => {
-                            console.log("Received track:", event.track.kind);
-                            set({ audioStream: event.streams[0] });
-                        });
-                        await get().peerConnection?.setRemoteDescription(sdp);
-                    }
-                } else {
-                    const msg = JSON.parse(message);
-                    if (msg.msg === "stop_done_initial_peer_connection") {
+                const message: MessageResult = JSON.parse(event.data);
+
+                if (message.command == "ice-candidate") {
+                    const candidate = JSON.parse(message.result);
+                    get().peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+                } else if (message.command == "answer") {
+
+                    get().peerConnection?.addEventListener("track", (event) => {
+                        console.log("TRACK");
+                        set({ audioStream: event.streams[0] });
+                    });
+
+                    const answer = JSON.parse(message.result);
+
+                    await get().peerConnection?.setRemoteDescription(answer);
+                } else if (message.command == "stop_done") {
+
+                } else if (message.command == "play_done") {
+                    if (message.result == "stop_done_initial_peer_connection") {
                         get().closePeerConnection();
-                        get().initializePeerConnection(Number(msg.ID))
+                        get().initializePeerConnection("listen", Number(message.payload))
                     }
                 }
+                else {
+                    console.log("Unknown command : ", message);
+                }
+
             } catch (e: unknown) {
                 console.error("Error in onmessage handler:", e);
             }
@@ -52,7 +73,7 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
         set({ websocket: ws });
     },
 
-    initializePeerConnection: async (id: number) => {
+    initializePeerConnection: async (command: "record" | "listen", id = 0, stream?: MediaStream) => {
         const pc = new RTCPeerConnection();
 
         pc.ontrack = (event) => {
@@ -60,14 +81,18 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
             set({ audioStream: event.streams[0] });
         };
 
+        if (stream && command == "record") {
+            console.log("ADDDED TRACK!!")
+            stream.getAudioTracks().forEach((track) => {
+                pc.addTrack(track, stream);
+            })
+        }
+
         pc.onicecandidate = async (event) => {
-            if (event.candidate === null) {
-                const { websocket } = get();
-                websocket?.send(JSON.stringify({
-                    type: "offer",
-                    payload: id,
-                    option: "listen",
-                    msg: btoa(JSON.stringify(pc.localDescription))
+            if (event.candidate) {
+                get().websocket?.send(JSON.stringify({
+                    command: 'ice-candidate',
+                    data: event.candidate
                 }));
             }
         };
@@ -86,6 +111,12 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
         try {
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+
+            get().websocket?.send(JSON.stringify({
+                payload: id,
+                command: command,
+                data: offer
+            }));
         } catch (e) {
             console.error("Offer creation failed:", e);
         }

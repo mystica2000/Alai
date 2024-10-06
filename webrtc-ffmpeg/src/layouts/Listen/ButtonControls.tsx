@@ -15,13 +15,13 @@ export default function ButtonControls({ ID }: ARecordProps) {
     const handlePlay = () => {
         stopAllRecords();
         playRecord(ID);
-        sendMessage({ msg: "play", type: "command", option: "command", payload: ID });
+        sendMessage({ command: "play", data: {}, payload: ID });
     }
 
     const handleStop = () => {
         setAllStopped(true);
         stopAllRecords();
-        sendMessage({ msg: "stop", type: "command", option: "command", payload: ID });
+        sendMessage({ command: "stop", data: {}, payload: ID });
     }
 
 

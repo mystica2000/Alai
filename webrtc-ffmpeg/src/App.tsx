@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react'
 import './App.css'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
 import useWebSocketStore from './hooks/useWebsocket'
-import Record from './layouts/Record'
+import Record from './layouts/Record/Record'
 import ServerStatus from './layouts/ServerStatus'
-import Stream from './layouts/Stream'
+import Stream from './layouts/Listen/Stream'
 
 function App() {
 
