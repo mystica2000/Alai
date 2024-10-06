@@ -132,9 +132,9 @@ func HandleOffer(pc *webrtc.PeerConnection, from string, sdp string, conn *webso
 			_, err = listenFromDisk(pc, payload, conn)
 
 			if err != nil {
-				log.Printf("\n Error on Initializing save to disk: %v", err)
+				log.Printf("\n Error on Initializing load from disk: %v", err)
 			} else {
-				log.Printf("\n Initializing save to disk: %v", err)
+				log.Printf("\n Initializing load from disk: %v", err)
 			}
 		}
 

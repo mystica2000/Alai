@@ -16,7 +16,7 @@ import (
 )
 
 // Generate a unique file name for the recording based on the current number of recordings in the directory.
-func CreateFileName() string {
+func CreateFileName() (string, string) {
 
 	// Construct the path to the recordings directory using `filepath.Join`
 	dataPath := filepath.Join(projectpath.Root, "internal/data/recordings/")
@@ -25,7 +25,7 @@ func CreateFileName() string {
 	fname := "recording_" + time.Now().Format("20060102_150405") + ".ogg"
 	fnameWithDir := filepath.Join(dataPath, fname)
 
-	return fnameWithDir
+	return fname, fnameWithDir
 }
 
 func SaveRecordingToDisk(pc *webrtc.PeerConnection) (*webrtc.PeerConnection, error) {
@@ -33,7 +33,8 @@ func SaveRecordingToDisk(pc *webrtc.PeerConnection) (*webrtc.PeerConnection, err
 		return nil, fmt.Errorf("error adding audio transceiver: %v", err)
 	}
 
-	oggFile, err := oggwriter.New(CreateFileName(), 48000, 2)
+	newFileName, fileNameWithDir := CreateFileName()
+	oggFile, err := oggwriter.New(fileNameWithDir, 48000, 2)
 	if err != nil {
 		return nil, fmt.Errorf("error creating OGG writer: %v", err)
 	}
@@ -57,7 +58,7 @@ func SaveRecordingToDisk(pc *webrtc.PeerConnection) (*webrtc.PeerConnection, err
 				return
 			}
 
-			storage.AddFileToDB()
+			storage.AddFileToDB(newFileName)
 
 			log.Println("File successfully saved to disk and added to database")
 

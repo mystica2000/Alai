@@ -48,7 +48,7 @@ func (ut *unixTimestamp) UnmarshalJSON(dat []byte) error {
 	return nil
 }
 
-func AddFileToDB() {
+func AddFileToDB(fileName string) {
 
 	LoadDBFromDisk()
 
@@ -58,10 +58,10 @@ func AddFileToDB() {
 		newID = records[len(records)-1].ID + 1
 	}
 
-	fileName := fmt.Sprintf("recording_%d", newID)
+	readableName := fmt.Sprintf("recording_%d", newID)
 	newRecord := Record{
 		ID:        newID,
-		Name:      fileName,
+		Name:      readableName,
 		CreatedAt: unixTimestamp(time.Now()),
 		Symlink:   fileName,
 	}
@@ -106,7 +106,8 @@ func SaveToDB() error {
 		return fmt.Errorf("error marshaling to JSON: %v", err)
 	}
 
-	err = os.WriteFile(dbName, jsonData, 0644)
+	dataPath := filepath.Join(projectpath.Root, "internal/data", dbName)
+	err = os.WriteFile(dataPath, jsonData, 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to file: %v", err)
 	}

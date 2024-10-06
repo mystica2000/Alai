@@ -55,8 +55,7 @@ func listenFromDisk(pc *webrtc.PeerConnection, id int, conn *websocket.Conn) (*w
 
 	go func() {
 		dataPath := filepath.Join(projectpath.Root, "internal/data/recordings/")
-
-		filePath := filepath.Join(dataPath, fileName+".ogg")
+		filePath := filepath.Join(dataPath, fileName)
 
 		file, oggErr := os.Open(filePath)
 
