@@ -14,12 +14,12 @@ export default function ARecord({ record }: ARecordProps) {
             <div className="flex ">
                 <span className="grow">{record.name}</span>
                 <div className="flex gap-3">
-                    <EditButton />
-                    <DeleteButton />
+                    <EditButton Id={record.id} Name={record.name} />
+                    <DeleteButton Id={record.id} Name={record.name} />
                 </div>
             </div>
             <div className="flex justify-center w-full mt-4">
-                <ButtonControls ID={record.id} />
+                <ButtonControls Id={record.id} />
                 <span className="flex-grow border-t mt-3 mx-8"></span>
             </div>
 

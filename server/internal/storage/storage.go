@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	projectpath "server/internal/projectPath"
@@ -74,8 +75,16 @@ func AppendRecord(record Record) {
 }
 
 func DeleteRecord(id int) {
+	recordingPath := filepath.Join(projectpath.Root, "internal/data/recordings/")
+
 	for i, record := range records {
 		if record.ID == id {
+			recordingPath = filepath.Join(recordingPath, record.Symlink)
+
+			if err := os.Remove(recordingPath); err != nil {
+				log.Fatal(err)
+			}
+
 			records = append(records[:i], records[i+1:]...)
 			SaveToDB()
 			break

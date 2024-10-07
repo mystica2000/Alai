@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { useServerState } from "./useServerState";
+import { useRecordState } from "./useRecordState";
 
 interface Message {
     command: "stop" | "play" | "record" | "listen"
@@ -15,7 +17,8 @@ interface MessageResult {
 interface WebsocketState {
     websocket: WebSocket | null;
     peerConnection: RTCPeerConnection | null
-    audioStream: MediaStream | null
+    audioStream: MediaStream | null;
+    currentTask: "listen" | "record" | "";
     initializeWebsocket: () => void;
     initializePeerConnection: (command: "listen" | "record", id: number, stream?: MediaStream) => Promise<void>
     closePeerConnection: () => void;
@@ -27,6 +30,7 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
     websocket: null,
     peerConnection: null,
     audioStream: null,
+    currentTask: "",
 
     initializeWebsocket: () => {
         const ws = new WebSocket("http://localhost:8080/ws");
@@ -47,18 +51,27 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
                 } else if (message.command == "answer") {
 
                     get().peerConnection?.addEventListener("track", (event) => {
-                        console.log("TRACK");
                         set({ audioStream: event.streams[0] });
                     });
 
                     const answer = JSON.parse(message.result);
 
                     await get().peerConnection?.setRemoteDescription(answer);
-                } else if (message.command == "stop_done") {
 
+                    if (get().currentTask == "record") {
+                        useServerState.getState().addToLog({ type: "info", text: "🔴 Recording on Process" });
+                    }
+
+                } else if (message.command == "stop_done") {
+                    if (get().currentTask == "listen") {
+                        useRecordState.getState().stopAllRecords();
+                    }
+
+                    set({ currentTask: "" })
                 } else if (message.command == "play_done") {
                     if (message.result == "stop_done_initial_peer_connection") {
                         get().closePeerConnection();
+                        set({ currentTask: "" })
                         get().initializePeerConnection("listen", Number(message.payload))
                     }
                 }
@@ -79,13 +92,15 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
         pc.ontrack = (event) => {
             console.log("Received track:", event.track.kind);
             set({ audioStream: event.streams[0] });
+            useServerState.getState().addToLog({ type: "info", text: "⏳ Stream is Loading..." });
+            set({ currentTask: "listen" })
         };
 
         if (stream && command == "record") {
-            console.log("ADDDED TRACK!!")
             stream.getAudioTracks().forEach((track) => {
                 pc.addTrack(track, stream);
             })
+            set({ currentTask: "record" })
         }
 
         pc.onicecandidate = async (event) => {
@@ -101,6 +116,7 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
             if (["closed", "disconnected", "failed"].includes(pc.connectionState)) {
                 set({ audioStream: null });
                 get().closePeerConnection();
+                set({ currentTask: "" })
             } else {
                 console.log("conecction statee ", pc.connectionState)
             }
@@ -117,10 +133,13 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
                 command: command,
                 data: offer
             }));
+
+            if (get().currentTask == "record") {
+                useServerState.getState().addToLog({ type: "info", text: "⏳ Preparing to record" });
+            }
         } catch (e) {
             console.error("Offer creation failed:", e);
         }
-
 
         set({ peerConnection: pc });
     },

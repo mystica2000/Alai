@@ -51,6 +51,9 @@ func deleteRecordings(w http.ResponseWriter, r *http.Request) {
 
 	storage.DeleteRecord(id)
 
+	w.WriteHeader(http.StatusAccepted)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("Deleted Successfully"))
 }
 
 func updateRecordings(w http.ResponseWriter, r *http.Request) {

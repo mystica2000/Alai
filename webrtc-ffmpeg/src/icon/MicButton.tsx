@@ -44,7 +44,7 @@ export default function MicButton() {
 
             return stream;
         } catch (e: unknown) {
-            addToLog({ type: "error", text: "Allow Microphone Connection for recording" });
+            addToLog({ type: "error", text: "❌ Allow Microphone Connection for recording" });
             return null;
         }
     }
@@ -58,6 +58,8 @@ export default function MicButton() {
 
             return () => clearInterval(interval);
         } else {
+
+            useServerState.getState().addToLog({ type: "info", text: "✅ Recording is Saved" });
             setIsActive(false);
         }
     }, [micOn]);

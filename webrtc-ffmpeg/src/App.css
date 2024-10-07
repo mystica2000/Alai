@@ -11,3 +11,7 @@ body {
 #root {
   height: 100%;
 }
+
+body[data-scroll-locked] {
+  padding: 2em !important;
+}

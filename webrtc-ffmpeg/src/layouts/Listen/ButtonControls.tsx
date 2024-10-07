@@ -4,34 +4,34 @@ import PlayButton from "@/icon/PlayButton";
 import StopButton from "@/icon/StopButton";
 
 interface ARecordProps {
-    ID: number;
+    Id: number;
 }
 
-export default function ButtonControls({ ID }: ARecordProps) {
+export default function ButtonControls({ Id }: ARecordProps) {
     const { playRecord, stopAllRecords, getPlayingRecord } = useRecordState();
     const { sendMessage } = useWebSocketStore()
     const setAllStopped = useRecordState((state) => state.setAllStopped);
 
     const handlePlay = () => {
         stopAllRecords();
-        playRecord(ID);
-        sendMessage({ command: "play", data: {}, payload: ID });
+        playRecord(Id);
+        sendMessage({ command: "play", data: {}, payload: Id });
     }
 
     const handleStop = () => {
         setAllStopped(true);
         stopAllRecords();
-        sendMessage({ command: "stop", data: {}, payload: ID });
+        sendMessage({ command: "stop", data: {}, payload: Id });
     }
 
 
     return <>
         <div className="flex gap-2 flex-row	">
-            <button className="p-2 scale-175 flex" onClick={handlePlay} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == ID ? true : false}>
-                <PlayButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == ID ? true : false} />
+            <button className="p-2 scale-175 flex" onClick={handlePlay} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false}>
+                <PlayButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false} />
             </button>
-            <button className="p-2 scale-175 flex" onClick={handleStop} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == ID ? false : true}>
-                <StopButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == ID ? false : true} />
+            <button className="p-2 scale-175 flex" onClick={handleStop} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? false : true}>
+                <StopButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? false : true} />
             </button>
         </div>
     </>
