@@ -53,6 +53,8 @@ func listenFromDisk(pc *webrtc.PeerConnection, id int, conn *websocket.Conn) (*w
 		return nil, fmt.Errorf("error on get record by filename: %v", err)
 	}
 
+	done := make(chan struct{})
+
 	go func() {
 		dataPath := filepath.Join(projectpath.Root, "internal/data/recordings/")
 		filePath := filepath.Join(dataPath, fileName)
@@ -76,39 +78,44 @@ func listenFromDisk(pc *webrtc.PeerConnection, id int, conn *websocket.Conn) (*w
 		ticker := time.NewTicker(oggPageDuration)
 		defer ticker.Stop()
 
-		for ; true; <-ticker.C {
-			pageData, pageHeader, oggErr := ogg.ParseNextPage()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				pageData, pageHeader, oggErr := ogg.ParseNextPage()
 
-			if errors.Is(oggErr, io.EOF) {
-				fmt.Println("All audio pages parsed and sent!! ")
+				if errors.Is(oggErr, io.EOF) {
+					fmt.Println("All audio pages parsed and sent!! ")
 
-				message := CommandResponse{
-					Payload: id,
-					Command: "stop_done",
+					message := CommandResponse{
+						Payload: id,
+						Command: "stop_done",
+					}
+
+					conn.WriteJSON(message)
+					lastGranule = 0
+					// Gracefully shutdown the peer connection
+					if closeErr := pc.Close(); closeErr != nil {
+						panic(closeErr)
+					}
+					return
+
 				}
 
-				conn.WriteJSON(message)
-				lastGranule = 0
-				// Gracefully shutdown the peer connection
-				if closeErr := pc.Close(); closeErr != nil {
-					panic(closeErr)
+				if oggErr != nil {
+					log.Printf("Error parsing OGG page: %v", err)
+					return
 				}
-				return
 
-			}
-
-			if oggErr != nil {
-				log.Printf("Error parsing OGG page: %v", err)
-				return
-			}
-
-			sampleCount := float64(pageHeader.GranulePosition - lastGranule)
-			lastGranule = pageHeader.GranulePosition
-			fmt.Println(lastGranule)
-			sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
-			if oggErr = audioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
-				log.Printf("Error writing sample: %v", err)
-				return
+				sampleCount := float64(pageHeader.GranulePosition - lastGranule)
+				lastGranule = pageHeader.GranulePosition
+				fmt.Println(lastGranule)
+				sampleDuration := time.Duration((sampleCount/48000)*1000) * time.Millisecond
+				if oggErr = audioTrack.WriteSample(media.Sample{Data: pageData, Duration: sampleDuration}); oggErr != nil {
+					log.Printf("Error writing sample: %v", err)
+					return
+				}
 			}
 		}
 
@@ -118,6 +125,12 @@ func listenFromDisk(pc *webrtc.PeerConnection, id int, conn *websocket.Conn) (*w
 		fmt.Printf("Connection State has changed %s \n", connectionState.String())
 		if connectionState == webrtc.ICEConnectionStateConnected {
 			iceConnectedCtxCancel()
+		}
+	})
+
+	pc.OnConnectionStateChange(func(pcs webrtc.PeerConnectionState) {
+		if pcs == webrtc.PeerConnectionStateClosed {
+			close(done)
 		}
 	})
 

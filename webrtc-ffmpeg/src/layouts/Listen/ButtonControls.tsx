@@ -9,7 +9,7 @@ interface ARecordProps {
 
 export default function ButtonControls({ Id }: ARecordProps) {
     const { playRecord, stopAllRecords, getPlayingRecord } = useRecordState();
-    const { sendMessage } = useWebSocketStore()
+    const { sendMessage, closePeerConnection, setCurrentTask } = useWebSocketStore()
     const setAllStopped = useRecordState((state) => state.setAllStopped);
 
     const handlePlay = () => {
@@ -22,11 +22,13 @@ export default function ButtonControls({ Id }: ARecordProps) {
         setAllStopped(true);
         stopAllRecords();
         sendMessage({ command: "stop", data: {}, payload: Id });
+        closePeerConnection();
+        setCurrentTask("");
     }
 
 
     return <>
-        <div className="flex gap-2 flex-row	">
+        <div className="flex gap-2 flex-row	items-center">
             <button className="p-2 scale-175 flex" onClick={handlePlay} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false}>
                 <PlayButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false} />
             </button>

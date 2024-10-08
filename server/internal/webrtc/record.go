@@ -58,9 +58,13 @@ func SaveRecordingToDisk(pc *webrtc.PeerConnection) (*webrtc.PeerConnection, err
 				return
 			}
 
-			storage.AddFileToDB(newFileName)
+			err := storage.AddFileToDB(newFileName, fileNameWithDir)
 
-			log.Println("File successfully saved to disk and added to database")
+			if err != nil {
+				log.Printf("%v", err)
+			} else {
+				log.Println("File successfully saved to disk and added to database")
+			}
 
 			// Gracefully shut down the peer connection
 			if closeErr := pc.Close(); closeErr != nil {

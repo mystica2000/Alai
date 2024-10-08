@@ -24,7 +24,6 @@ export default function DeleteButton({ Id, Name }: ADeleteRecord) {
         }
     }
 
-
     return <>
 
         <AlertDialog>

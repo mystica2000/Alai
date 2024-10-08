@@ -21,7 +21,7 @@ func Recordings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRecordings(w http.ResponseWriter, r *http.Request) {
+func getRecordings(w http.ResponseWriter, _ *http.Request) {
 	storage, err := storage.GetRecords()
 
 	if err != nil {

@@ -1,1 +1,3 @@
 internal/data/recordings/*
+internal/data/waveforms/*
+!internal/data/db.json

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"server/internal/ffmpeg"
 	projectpath "server/internal/projectPath"
 	"sort"
 	"strconv"
@@ -17,6 +18,8 @@ type Record struct {
 	Name      string        `json:"name" `
 	Symlink   string        `json:"symlink"`
 	CreatedAt unixTimestamp `json:"created_at"`
+	Duration  float64       `json:"duration"`
+	DataUri   string        `json:"dataURI"`
 }
 
 // TrimmedRecord struct excludes CreatedAt and Symlink
@@ -24,6 +27,8 @@ type TrimmedRecord struct {
 	ID        int           `json:"id"`
 	Name      string        `json:"name"`
 	CreatedAt unixTimestamp `json:"created_at"`
+	Duration  float64       `json:"duration"`
+	DataUri   string        `json:"dataURI"`
 }
 
 type unixTimestamp time.Time
@@ -49,24 +54,36 @@ func (ut *unixTimestamp) UnmarshalJSON(dat []byte) error {
 	return nil
 }
 
-func AddFileToDB(fileName string) {
+func AddFileToDB(fileName string, filePath string) error {
 
 	LoadDBFromDisk()
 
-	newID := 1
+	duration, err := ffmpeg.GetAudioDuration(filePath)
 
-	if len(records) > 1 {
-		newID = records[len(records)-1].ID + 1
+	if err != nil {
+		return err
 	}
 
-	readableName := fmt.Sprintf("recording_%d", newID)
+	base64String, err := ffmpeg.GenerateAudioWaveFormAndReturnAsBase64(fileName)
+
+	if err != nil {
+		return err
+	}
+
+	id := time.Now().Unix()
+	readableName := fmt.Sprintf("recording_%d", id)
+
 	newRecord := Record{
-		ID:        newID,
+		ID:        int(id),
 		Name:      readableName,
 		CreatedAt: unixTimestamp(time.Now()),
 		Symlink:   fileName,
+		Duration:  duration,
+		DataUri:   base64String,
 	}
 	AppendRecord(newRecord)
+
+	return nil
 }
 
 func AppendRecord(record Record) {
@@ -102,14 +119,18 @@ func UpdateRecord(rec Record) {
 	}
 }
 
-func SortRecords() {
-	sort.Slice(records, func(i, j int) bool {
-		return records[i].ID < records[j].ID
-	})
-	SaveToDB()
-}
-
 func SaveToDB() error {
+
+	sort.Slice(records, func(i, j int) bool {
+		timeI := time.Time(records[i].CreatedAt)
+		timeJ := time.Time(records[j].CreatedAt)
+		return timeI.After(timeJ)
+	})
+
+	for _, record := range records {
+		fmt.Println("After Sort:", time.Time(record.CreatedAt))
+	}
+
 	jsonData, err := json.MarshalIndent(records, "", "\t")
 	if err != nil {
 		return fmt.Errorf("error marshaling to JSON: %v", err)
@@ -166,6 +187,8 @@ func GetRecords() ([]byte, error) {
 			ID:        record.ID,
 			Name:      record.Name,
 			CreatedAt: record.CreatedAt,
+			Duration:  record.Duration,
+			DataUri:   record.DataUri,
 		})
 	}
 

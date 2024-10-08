@@ -22,7 +22,7 @@ interface WebsocketState {
     initializeWebsocket: () => void;
     initializePeerConnection: (command: "listen" | "record", id: number, stream?: MediaStream) => Promise<void>
     closePeerConnection: () => void;
-    setAudioStream: (stream: MediaStream | null) => void;
+    setCurrentTask: (task: "listen" | "record" | "") => void;
     sendMessage: (message: Message) => void;
 }
 
@@ -65,6 +65,7 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
                 } else if (message.command == "stop_done") {
                     if (get().currentTask == "listen") {
                         useRecordState.getState().stopAllRecords();
+                        console.log("I SWEAR TO GOD")
                     }
 
                     set({ currentTask: "" })
@@ -152,7 +153,8 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
         }
     },
 
-    setAudioStream: (stream: MediaStream | null) => set({ audioStream: stream }),
+
+    setCurrentTask: (task: "listen" | "record" | "") => set({ currentTask: task }),
 
     sendMessage: (message: any) => {
         const { websocket } = get();

@@ -47,7 +47,7 @@ func HandleSignalling(conn *websocket.Conn) {
 		case "record", "listen":
 			log.Printf("Got Command: %s", message.Command)
 			if pc != nil {
-				StopExistingPeerConnection(pc, conn, 0, message.Command) // Close existing connection
+				StopExistingPeerConnection(pc, conn, 0, "stop") // Close existing connection
 				pc = nil
 			}
 
@@ -133,8 +133,6 @@ func HandleOffer(pc *webrtc.PeerConnection, from string, sdp string, conn *webso
 
 			if err != nil {
 				log.Printf("\n Error on Initializing load from disk: %v", err)
-			} else {
-				log.Printf("\n Initializing load from disk: %v", err)
 			}
 		}
 

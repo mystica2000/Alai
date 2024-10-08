@@ -5,6 +5,8 @@ export type Record = {
     name: string;
     created_at: number
     isPlaying?: boolean
+    duration: number
+    dataURI: string
 }
 
 type RecordState = {
@@ -14,7 +16,7 @@ type RecordState = {
 
 type RecordAction = {
     appendRecord: (newRecord: Omit<Record, "isPlaying">) => void
-    appendRecords: (newRecords: Omit<Record, "isPlaying">[]) => void
+    createRecords: (newRecords: Omit<Record, "isPlaying">[]) => void
     playRecord: (id: number) => void
     stopRecord: (id: number) => void
     stopAllRecords: () => void
@@ -35,10 +37,9 @@ export const useRecordState = create<RecordState & RecordAction>((set, get) => (
             records: [...prev.records, { ...newRecord, isPlaying: false }].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
         })),
 
-    appendRecords: (newRecords) =>
-        set((state) => ({
+    createRecords: (newRecords) =>
+        set(() => ({
             records: [
-                ...state.records,
                 ...newRecords.map((record) => ({
                     ...record,
                     isPlaying: false,

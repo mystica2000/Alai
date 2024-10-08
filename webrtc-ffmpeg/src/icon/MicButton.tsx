@@ -6,13 +6,14 @@ export default function MicButton() {
 
     const [micOn, setMicOn] = useState(false);
     const [isActive, setIsActive] = useState(false);
-    const { initializePeerConnection, sendMessage, closePeerConnection } = useWebSocketStore()
+    const { initializePeerConnection, sendMessage, closePeerConnection, setCurrentTask } = useWebSocketStore()
 
     const handleMicOn = async () => {
 
         if (micOn) {
             setMicOn((prevMic) => !prevMic);
             sendMessage({ command: "stop", data: {} });
+            setCurrentTask("");
             closePeerConnection();
         } else {
             const result = await askMicPermission();
