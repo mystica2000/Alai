@@ -1,4 +1,8 @@
 /** @type {import('tailwindcss').Config} */
+
+
+const plugin = require('tailwindcss/plugin');
+
 export default {
   darkMode: ["class"],
   content: [
@@ -14,17 +18,35 @@ export default {
       },
       colors: {
         black: '#000000',
-        badge: "#4338ca",
         indigo: {
           DEFAULT: '#5c6ac4',
           dark: '#202e78'
         }
       },
-      scale: {
-        '175': '1.75',
-      }
     }
   },
-  plugins: [require("tailwindcss-animate"), require('tailwind-scrollbar'),],
+  plugins: [require("tailwindcss-animate"),
+  // https://stackoverflow.com/a/72900792
+  plugin(({ addBase, theme }) => {
+    addBase({
+      '.scrollbar': {
+        overflowY: 'auto',
+        scrollbarColor: `${theme('colors.neutral.500')} transparent`, // For Firefox
+        scrollbarWidth: 'thin',
+      },
+      '.scrollbar::-webkit-scrollbar': {
+        width: '1px', // Adjust width as needed
+      },
+      '.scrollbar::-webkit-scrollbar-track': {
+        borderRadius: '50px',
+        backgroundColor: 'transparent',
+      },
+      '.scrollbar::-webkit-scrollbar-thumb': {
+        borderRadius: '50px',
+        backgroundColor: theme('colors.neutral.500'),
+      },
+    });
+  })
+  ],
 }
 

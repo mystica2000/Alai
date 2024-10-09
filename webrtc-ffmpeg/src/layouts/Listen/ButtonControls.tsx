@@ -29,10 +29,10 @@ export default function ButtonControls({ Id }: ARecordProps) {
 
     return <>
         <div className="flex gap-2 flex-row	items-center">
-            <button className="p-2 scale-175 flex" onClick={handlePlay} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false}>
+            <button className="flex" onClick={handlePlay} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false}>
                 <PlayButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? true : false} />
             </button>
-            <button className="p-2 scale-175 flex" onClick={handleStop} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? false : true}>
+            <button className="flex" onClick={handleStop} disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? false : true}>
                 <StopButton disabled={getPlayingRecord() != undefined && getPlayingRecord()?.id == Id ? false : true} />
             </button>
         </div>

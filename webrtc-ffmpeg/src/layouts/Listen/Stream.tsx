@@ -12,7 +12,7 @@ export default function Stream() {
                     contains Recordings list
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2 grow overflow-auto border-solid border-neutral-100 border-2 rounded-md p-2 m-4 scrollbar-thin scrollbar-thumb-rounded scrollbar-track-black">
+            <CardContent className="space-y-2 grow overflow-auto border-solid border-neutral-100 border-2 rounded-md p-2 m-4 overflow-y-scroll scrollbar">
                 <RecordList />
             </CardContent>
             <CardFooter className="block grow-0 h-64">

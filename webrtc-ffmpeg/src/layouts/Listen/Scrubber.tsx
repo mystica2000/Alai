@@ -69,6 +69,9 @@ export default function Scrubber({ ImageUri, Id, Duration }: AScrubberProps) {
 
         console.log("WHAT?!!!", currentTask)
         if (currentTask == "listen") {
+
+            InitializeCanvas();
+
             const canvas: any = canvasRef.current;
             const context = canvas?.getContext('2d');
 
@@ -76,10 +79,25 @@ export default function Scrubber({ ImageUri, Id, Duration }: AScrubberProps) {
             const elapsedTime = timestamp - lastUpdateTimeRef.current;
             progressRef.current = Math.min(elapsedTime / 1000, Duration);
 
+
             context.globalCompositeOperation = "source-atop";
             const overlayWidth = canvas.width * (progressRef.current / Duration);
             context.fillStyle = "#00ab6b";
             context.fillRect(0, 0, overlayWidth, canvas.height);
+
+            context.globalCompositeOperation = "source-over";
+
+            const lineX = overlayWidth; // X position for the line
+            const startY = 2; // Start at the top of the canvas
+            const endY = canvas.height - 2; // End at the bottom of the canvas
+            console.log("lineX:", endY);
+
+            context.lineWidth = 2;
+            context.strokeStyle = "#00ab6b";
+            context.beginPath(); // Start a new path
+            context.moveTo(lineX, startY);  // Start drawing the line from the end of the progress bar
+            context.lineTo(lineX, endY); // Expand the line to the right
+            context.stroke();
 
             if (progressRef.current < Duration) {
                 animationRef.current = requestAnimationFrame(startCanvas);

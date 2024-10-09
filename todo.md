@@ -11,7 +11,7 @@ Todo
   - stopped recording
   - connecttion error
 - refactor [done]
-- add date as long time ago, now etc (by created time)
+- add date as long time ago, now etc (by created time) [done]
 
 IMPORTANT!!!!! [DONE!!!]
 
@@ -30,4 +30,4 @@ New Ideas:
 - tree-like folder support (of child-level 1) of the root
   - Edit recording -> assign random emoji
   - combine audio with (list of audios as its sibling) + (add as last, this one first that next) ffmpeg
-  - save as copy (OR) overwrite both and save as one file - irreversible change
+  - save as copy (OR) overwrite both and save as one file - irreversible chang

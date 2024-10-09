@@ -20,12 +20,14 @@ export default function ARecord({ record }: ARecordProps) {
     }, [record])
 
     return (
-        <li key={record.id} className="bg-slate-600 m-2 p-4 rounded-lg border-2 border-slate-900 bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 pb-0" >
-            <div className="flex ">
-                <span className="grow">{record.name}</span>
-                <div className="flex gap-3">
+        <li key={record.id} className="bg-slate-600 m-2 p-4 rounded-lg border-2 border-slate-900 bg-gradient-to-r from-blue-500 to-purple-600 pb-0" >
+            <div className="flex justify-between">
+                <div className="flex gap-3.5 items-baseline">
+                    <span className="text-base grow text-white font-semibold mb-2">{record.name}</span>
+                    <Badge className="border-0" variant={"secondary"}>{updateText}</Badge>
+                </div>
 
-                    <Badge className="border-2 !bg-badge">{updateText}</Badge>
+                <div className="flex gap-3">
                     <EditButton Id={record.id} Name={record.name} />
                     <DeleteButton Id={record.id} Name={record.name} />
                 </div>
