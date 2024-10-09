@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+type Record struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 func Recordings(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -58,4 +63,17 @@ func deleteRecordings(w http.ResponseWriter, r *http.Request) {
 
 func updateRecordings(w http.ResponseWriter, r *http.Request) {
 
+	var record Record
+	err := json.NewDecoder(r.Body).Decode(&record)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Decoding Error"))
+		return
+	}
+
+	storage.UpdateRecord(record.Id, record.Name)
+
+	w.WriteHeader(http.StatusAccepted)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("Deleted Successfully"))
 }

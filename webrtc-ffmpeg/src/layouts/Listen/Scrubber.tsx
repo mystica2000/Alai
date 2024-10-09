@@ -23,8 +23,6 @@ export default function Scrubber({ ImageUri, Id, Duration }: AScrubberProps) {
 
     useEffect(() => {
 
-        console.log("currentTask!!! btw");
-
         if (currentTask == "listen") {
             const record = currentPlayingRecord();
             if (record && record.id == Id) {

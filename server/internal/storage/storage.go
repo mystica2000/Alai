@@ -109,10 +109,10 @@ func DeleteRecord(id int) {
 	}
 }
 
-func UpdateRecord(rec Record) {
+func UpdateRecord(id int, name string) {
 	for i, record := range records {
-		if record.ID == rec.ID {
-			records[i].Name = rec.Name
+		if record.ID == id {
+			records[i].Name = name
 			SaveToDB()
 			break
 		}
@@ -126,10 +126,6 @@ func SaveToDB() error {
 		timeJ := time.Time(records[j].CreatedAt)
 		return timeI.After(timeJ)
 	})
-
-	for _, record := range records {
-		fmt.Println("After Sort:", time.Time(record.CreatedAt))
-	}
 
 	jsonData, err := json.MarshalIndent(records, "", "\t")
 	if err != nil {

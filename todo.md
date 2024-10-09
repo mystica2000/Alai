@@ -13,13 +13,6 @@ Todo
 - refactor [done]
 - add date as long time ago, now etc (by created time)
 
-New Ideas:
-
-- tree-like folder support (of child-level 1) of the root
-  - Edit recording -> assign random emoji
-  - combine audio with (list of audios as its sibling) + (add as last, this one first that next) ffmpeg
-  - save as copy (OR) overwrite both and save as one file - irreversible change
-
 IMPORTANT!!!!! [DONE!!!]
 
 - ffmpeg module in go!
@@ -30,3 +23,11 @@ IMPORTANT!!!!! [DONE!!!]
   - use ffmpeg to find duration in seconds.. save it along on db.json
   - progress based on duration!! adjust!!
 - to get duration of the audio `ffprobe -i recording_2.ogg -show_entries format=duration -v quiet -of csv="p=0"`
+
+Extension!
+New Ideas:
+
+- tree-like folder support (of child-level 1) of the root
+  - Edit recording -> assign random emoji
+  - combine audio with (list of audios as its sibling) + (add as last, this one first that next) ffmpeg
+  - save as copy (OR) overwrite both and save as one file - irreversible change

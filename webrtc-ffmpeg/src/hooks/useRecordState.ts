@@ -21,7 +21,7 @@ type RecordAction = {
     stopRecord: (id: number) => void
     stopAllRecords: () => void
     getPlayingRecord: () => Record | undefined
-    updateRecord: (record: Record) => void
+    updateRecord: (id: number, name: string) => void
     deleteRecord: (id: number) => void
     setAllStopped: (value: boolean) => void;
 }
@@ -44,7 +44,7 @@ export const useRecordState = create<RecordState & RecordAction>((set, get) => (
                     ...record,
                     isPlaying: false,
                 }) as Record),  // Explicitly casting as Record
-            ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
         })),
 
     playRecord: (id) => set((state) => ({
@@ -66,9 +66,9 @@ export const useRecordState = create<RecordState & RecordAction>((set, get) => (
 
     getPlayingRecord: () => get().records.find(record => record.isPlaying) || undefined,
 
-    updateRecord: (updatedRecord) => set((state) => ({
+    updateRecord: (id: number, name: string) => set((state) => ({
         records: state.records.map(record =>
-            record.id === updatedRecord.id ? updatedRecord : record
+            record.id === id ? { ...record, name: name } : record
         )
     })),
 

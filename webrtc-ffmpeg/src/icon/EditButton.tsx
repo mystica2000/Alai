@@ -1,21 +1,36 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRecordState } from "@/hooks/useRecordState";
 import { useState } from "react";
 interface AEditRecordProps {
-    Id: Number;
+    Id: number;
     Name: string;
 }
 
 export default function EditButton({ Id, Name }: AEditRecordProps) {
 
     const [name, setName] = useState(Name);
+    const updateRecord = useRecordState((state) => state.updateRecord);
 
-    const handleEdit = () => {
-        if (Name !== name) {
+    const handleEdit = async (e: any) => {
+        if (Name !== name && name.length > 0) {
             // make call to backend
             // update record store
+            const fetchUrl = new URL("http://localhost:8080/recordings/");
+
+            try {
+                await fetch(fetchUrl, {
+                    method: "PUT",
+                    body: JSON.stringify({ id: Id, name: name })
+                });
+
+                updateRecord(Id, name);
+
+            } catch (err: unknown) {
+                console.log(err);
+            }
         }
     }
 
@@ -50,7 +65,9 @@ export default function EditButton({ Id, Name }: AEditRecordProps) {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="submit" onClick={handleEdit}>Save changes</Button>
+                    <DialogClose asChild>
+                        <Button type="submit" onClick={handleEdit}>Save changes</Button>
+                    </DialogClose>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
