@@ -15,6 +15,20 @@ Use case:
 
 - recording audiobooks, notes.
 
+## Setup
+- make sure you have ffmpeg configured on the system
+
+Server:
+- ```cd server```
+- ```go mod tidy```
+- ```go run cmd/server/main.go```
+  
+Client:
+It uses Vite w React
+- ```cd webrtc-ffmpeg```
+- ```npm install```
+- ```npm run dev```
+
 ## Wakthru
 
 
