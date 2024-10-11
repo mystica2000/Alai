@@ -90,7 +90,6 @@ export default function Scrubber({ ImageUri, Id, Duration }: AScrubberProps) {
             const lineX = overlayWidth; // X position for the line
             const startY = 2; // Start at the top of the canvas
             const endY = canvas.height - 2; // End at the bottom of the canvas
-            console.log("lineX:", endY);
 
             context.lineWidth = 2;
             context.strokeStyle = "#00ab6b";
