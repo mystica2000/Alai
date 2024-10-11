@@ -1,4 +1,5 @@
-Alai - means wave in Tamil - is a WebRTC-based audio recording web application with playback functionality. Built using Pion WebRTC.
+# Alai
+Alai - means wave 🌊 in Tamil - is a WebRTC-based audio recording web application with playback functionality. Built using Pion WebRTC.
 
 Features:
 
@@ -14,7 +15,10 @@ Use case:
 
 - recording audiobooks, notes.
 
+## Wakthru
+
 ## Architecture
+![testing-1](https://github.com/user-attachments/assets/ad3d0abc-b241-400d-8936-ea4391a95893)
 
 ### REST Endpoints
 
@@ -41,3 +45,4 @@ Calculating the duration of recordings
 ### Storage
 
 - Disk storage, json (S3 for object storage, persistant db could have been used, i know :P)
+
