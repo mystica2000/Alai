@@ -59,8 +59,6 @@ export default function MicButton() {
 
             return () => clearInterval(interval);
         } else {
-
-            useServerState.getState().addToLog({ type: "info", text: "✅ Recording is Saved" });
             setIsActive(false);
         }
     }, [micOn]);

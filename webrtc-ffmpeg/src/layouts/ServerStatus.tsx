@@ -13,8 +13,7 @@ export default function ServerStatus() {
 
     const testServer = async () => {
         try {
-            const fetchUrl = new URL('http://localhost:8080/server_test');
-            const response = await fetch(fetchUrl.href);
+            const response = await fetch("/api/server_test");
             (await response.text());
             addToLog({ type: "info", text: "Server is Connected!" });
             setServerState("secondary");

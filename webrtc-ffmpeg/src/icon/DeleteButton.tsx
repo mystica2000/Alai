@@ -1,6 +1,6 @@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useRecordState } from "@/hooks/useRecordState";
-import { Trash2, X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 interface ADeleteRecord {
     Id: number;
@@ -14,8 +14,7 @@ export default function DeleteButton({ Id, Name }: ADeleteRecord) {
         console.log("handle delete", Id);
 
         try {
-            const fetchUrl = new URL('http://localhost:8080/recordings/' + Id);
-            const result = await fetch(fetchUrl.href, {
+            const result = await fetch('/api/recordings/' + Id, {
                 method: "DELETE",
             });
             (await result.text());

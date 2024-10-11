@@ -33,7 +33,7 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
     currentTask: "",
 
     initializeWebsocket: () => {
-        const ws = new WebSocket("http://localhost:8080/ws");
+        const ws = new WebSocket("/ws");
 
         ws.onopen = () => console.log("WebSocket connected");
         ws.onclose = () => console.log("WebSocket disconnected");
@@ -65,7 +65,8 @@ const useWebSocketStore = create<WebsocketState>((set, get) => ({
                 } else if (message.command == "stop_done") {
                     if (get().currentTask == "listen") {
                         useRecordState.getState().stopAllRecords();
-                        console.log("I SWEAR TO GOD")
+                    } else if (get().currentTask == "record") {
+                        useServerState.getState().addToLog({ type: "info", text: "✅ Recording is Saved" });
                     }
 
                     set({ currentTask: "" })

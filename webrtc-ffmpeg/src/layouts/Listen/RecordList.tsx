@@ -19,8 +19,7 @@ export default function Stream() {
 
     const fetchRecordings = async () => {
         try {
-            const fetchUrl = new URL('http://localhost:8080/recordings/');
-            const result = await fetch(fetchUrl.href);
+            const result = await fetch("/api/recordings/");
             const response = (await result.json());
 
             createRecords(JSON.parse(atob(response.recordings)));

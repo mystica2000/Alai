@@ -1,6 +1,6 @@
 import { useRecordState } from "@/hooks/useRecordState";
 import useWebSocketStore from "@/hooks/useWebsocket";
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 
 interface AScrubberProps {
     ImageUri: string;

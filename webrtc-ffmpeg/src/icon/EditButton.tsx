@@ -15,14 +15,13 @@ export default function EditButton({ Id, Name }: AEditRecordProps) {
     const [name, setName] = useState(Name);
     const updateRecord = useRecordState((state) => state.updateRecord);
 
-    const handleEdit = async (e: any) => {
+    const handleEdit = async () => {
         if (Name !== name && name.length > 0) {
             // make call to backend
             // update record store
-            const fetchUrl = new URL("http://localhost:8080/recordings/");
 
             try {
-                await fetch(fetchUrl, {
+                await fetch("/api/recordings/", {
                     method: "PUT",
                     body: JSON.stringify({ id: Id, name: name })
                 });
